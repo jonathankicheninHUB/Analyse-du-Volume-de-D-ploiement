@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur Économique Dawn of Victory</title>
+    <!-- Chargement de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Configuration de la police Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Fond sombre pour un thème financier/gaming */
+        }
+        .card {
+            background-color: #161b22;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5);
+            border: 1px solid #30363d;
+        }
+        .input-style {
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            color: #ffffff;
+        }
+        .result-label {
+            color: #9e9e9e;
+        }
+        .result-value {
+            font-weight: 700;
+            color: #c9d1d9;
+        }
+    </style>
+</head>
+<body class="text-white p-4 sm:p-8 min-h-screen flex justify-center items-start">
+
+    <div id="app" class="w-full max-w-5xl space-y-8 mt-10">
+
+        <h1 class="text-3xl font-bold text-center text-teal-400 mb-6">
+            Analyse du Volume de Déploiement Multi-Comptes <span class="text-yellow-400">(3 Divisions/Compte)</span>
+        </h1>
+
+        <!-- Section des Paramètres d'Entrée -->
+        <div class="card p-6 rounded-xl space-y-6">
+            <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-blue-300">
+                1. Paramètres d'Entrée (Prix & Configuration)
+            </h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <!-- Nombre de Comptes -->
+                <div>
+                    <label for="numberOfAccounts" class="block text-sm font-medium result-label">Nombre de Comptes (Chacun avec 3 Divisions)</label>
+                    <input type="number" id="numberOfAccounts" value="1" min="1" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" inputmode="numeric">
+                </div>
+                
+                <!-- Sélecteur de Zone -->
+                <div>
+                    <label for="zoneSelector" class="block text-sm font-medium result-label">Sélectionner la Zone de Déploiement</label>
+                    <select id="zoneSelector" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-teal-500 focus:border-teal-500 appearance-none">
+                        <!-- Options seront remplies par JS -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-gray-800 pt-4">
+                <!-- Prix des Jetons de Coût -->
+                <div>
+                    <label for="priceCostToken" class="block text-sm font-medium result-label">Prix WAX des Jetons de Coût (DOV-H, R, S, F)</label>
+                    <input type="text" id="priceCostToken" value="0,00045262" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-teal-500 focus:border-teal-500" inputmode="decimal">
+                </div>
+                <!-- Prix du Jeton de Récompense -->
+                <div>
+                    <label for="priceDovX" class="block text-sm font-medium result-label">Prix WAX du Jeton de Récompense (DOVX)</label>
+                    <input type="text" id="priceDovX" value="0,00528552" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-teal-500 focus:border-teal-500" inputmode="decimal">
+                </div>
+                <!-- Prix WAX/USD -->
+                <div>
+                    <label for="priceWaxUsd" class="block text-sm font-medium result-label">Prix d'un WAX en USD ($)</label>
+                    <input type="text" id="priceWaxUsd" value="0,05" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-pink-500 focus:border-pink-500" inputmode="decimal">
+                </div>
+            </div>
+        </div>
+
+        <!-- Section des Résultats en WAX -->
+        <div class="card p-6 rounded-xl">
+            <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-purple-300 mb-6">
+                2. Volume de 24h en WAX (Total pour toutes les divisions)
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                <!-- Coût Total WAX (Demande) -->
+                <div class="p-3 bg-red-900/30 rounded-lg">
+                    <p class="text-sm result-label">Coût Total (Demande)</p>
+                    <p id="resultCost" class="text-2xl mt-1 text-red-400 result-value">--</p>
+                </div>
+
+                <!-- Récompense Totale WAX (Offre) -->
+                <div class="p-3 bg-green-900/30 rounded-lg">
+                    <p class="text-sm result-label">Récompense Totale (Offre DOVX)</p>
+                    <p id="resultReward" class="text-2xl mt-1 text-green-400 result-value">--</p>
+                </div>
+
+                <!-- Marge Nette WAX -->
+                <div class="p-3 bg-gray-800 rounded-lg">
+                    <p class="text-sm result-label">Marge/Déficit Nette (WAX)</p>
+                    <p id="resultNet" class="text-2xl mt-1 result-value">--</p>
+                </div>
+
+                <!-- Volume Transactionnel Total WAX -->
+                <div class="p-3 bg-blue-900/30 rounded-lg">
+                    <p class="text-sm result-label">Volume Transactionnel Total (24h)</p>
+                    <p id="resultVolume" class="text-2xl mt-1 text-blue-400 result-value">--</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section des Résultats en USD (Journalier) -->
+        <div class="card p-6 rounded-xl">
+            <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-pink-300 mb-6">
+                3. Volume de 24h en USD (Total pour toutes les divisions)
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <!-- Coût Total USD -->
+                <div class="p-3 bg-red-900/30 rounded-lg">
+                    <p class="text-sm result-label">Coût Total (Demande)</p>
+                    <p id="resultUsdCost" class="text-2xl mt-1 text-red-400 result-value">--</p>
+                </div>
+
+                <!-- Récompense Totale USD -->
+                <div class="p-3 bg-green-900/30 rounded-lg">
+                    <p class="text-sm result-label">Récompense Totale (Offre DOVX)</p>
+                    <p id="resultUsdReward" class="text-2xl mt-1 text-green-400 result-value">--</p>
+                </div>
+
+                <!-- Volume Transactionnel Total USD (24h) -->
+                <div class="p-3 bg-blue-900/30 rounded-lg">
+                    <p class="text-sm result-label">Volume Transactionnel Total</p>
+                    <p id="resultUsdVolume" class="text-2xl mt-1 text-blue-400 result-value">--</p>
+                </div>
+            </div>
+            
+             <!-- Marge Nette USD (Affiche seule pour bien la mettre en évidence) -->
+            <div class="mt-6 pt-4 border-t border-gray-700">
+                <p class="text-sm result-label">Marge/Déficit Nette (USD $)</p>
+                <p id="resultNetUsd" class="text-3xl mt-1 result-value">--</p>
+            </div>
+        </div>
+
+        <!-- Section des Résultats Mensuels et Annuels en USD (Nouveau) -->
+        <div class="card p-6 rounded-xl">
+            <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-fuchsia-300 mb-6">
+                4. Volume en USD Projetté (Mois & Année)
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- Volume Mensuel USD -->
+                <div class="p-4 bg-gray-900 rounded-lg border border-fuchsia-700">
+                    <p class="text-sm result-label">Volume Transactionnel Mensuel (USD $)</p>
+                    <p id="resultUsdVolumeMonthly" class="text-3xl mt-1 text-fuchsia-400 result-value">--</p>
+                </div>
+
+                <!-- Volume Annuel USD -->
+                <div class="p-4 bg-gray-900 rounded-lg border border-fuchsia-700">
+                    <p class="text-sm result-label">Volume Transactionnel Annuel (USD $)</p>
+                    <p id="resultUsdVolumeAnnual" class="text-3xl mt-1 text-fuchsia-400 result-value">--</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indicateurs pour une seule division (Non multipliés) -->
+        <div class="mt-8 pt-4 border-t border-gray-700 card p-6 rounded-xl">
+            <h3 class="text-lg font-semibold text-yellow-400">5. Indicateurs par Division (Non multipliés)</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                <div class="text-sm">
+                    <span class="font-bold text-gray-400">Coût d'un Jeton de Coût (Unités TU):</span>
+                    <span id="unitsCostPerToken" class="text-white ml-2">--</span>
+                </div>
+                <div class="text-sm">
+                    <span class="font-bold text-gray-400">Ratio d'Hyper-Amplification ($DOVX$ / Coût Jeton):</span>
+                    <span id="ratioAmplification" class="text-lg text-green-500 font-extrabold ml-2">--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-xs text-gray-500 text-center pt-4">
+            *Les coûts de combat sont basés sur la colonne 'Combat Cost' et sont divisés par 4 pour les quatre jetons de coût distincts (DOV-H, R, S, F).
+        </div>
+    </div>
+
+    <script>
+        // --- Fonctions de formatage ---
+
+        /**
+         * Formate une valeur numérique en chaîne WAX avec un nombre défini de décimales.
+         * @param {number} value La valeur à formater.
+         * @param {number} decimales Le nombre de décimales à afficher.
+         * @returns {string} La chaîne formatée en WAX.
+         */
+        const formatWAX = (value, decimales = 6) => {
+            if (isNaN(value)) return '--';
+            return value.toLocaleString('fr-FR', {
+                minimumFractionDigits: decimales,
+                maximumFractionDigits: decimales
+            }) + ' WAX';
+        };
+
+        /**
+         * Formate une valeur numérique en USD ($) avec un nombre défini de décimales.
+         * @param {number} value La valeur à formater.
+         * @param {number} decimales Le nombre de décimales à afficher.
+         * @returns {string} La chaîne formatée en USD.
+         */
+        const formatUSD = (value, decimales = 4) => {
+            if (isNaN(value)) return '--';
+            return value.toLocaleString('fr-FR', {
+                minimumFractionDigits: decimales,
+                maximumFractionDigits: decimales,
+                style: 'currency',
+                currency: 'USD',
+            });
+        };
+
+        /**
+         * Formate une valeur numérique en unités (nombre entier avec séparateur).
+         * @param {number} value La valeur à formater.
+         * @returns {string} La chaîne formatée en unités.
+         */
+        const formatUnits = (value) => {
+            if (isNaN(value)) return '--';
+            // Utilise 0 décimale pour les grands nombres entiers, mais autorise 2 décimales si nécessaire
+            const maxDigits = (value % 1 !== 0) ? 2 : 0;
+            return value.toLocaleString('fr-FR', { maximumFractionDigits: maxDigits });
+        };
+        
+        /**
+         * Convertit une chaîne de caractères française (avec virgule) en nombre flottant standard (avec point).
+         * @param {string} str La chaîne de caractères à parser.
+         * @returns {number} Le nombre flottant correspondant.
+         */
+        const parseFrenchFloat = (str) => {
+            if (!str) return NaN;
+            // Remplace la virgule par le point pour une conversion standard
+            const standardStr = str.toString().replace(',', '.');
+            return parseFloat(standardStr);
+        };
+        // --------------------------------------------------------------------------
+
+        // Constantes de temps
+        const DAYS_IN_MONTH = 30;
+        const DAYS_IN_YEAR = 365;
+
+        // Facteur de multiplication pour le nombre de divisions par compte
+        const DIVISIONS_PER_ACCOUNT = 3;
+
+        // Définition des données de base de l'économie (Unités divisées par 1000 pour que beach1 = 1160 par jeton)
+        // Les valeurs ici représentent le coût/récompense pour UNE SEULE DIVISION/DÉPLOIEMENT.
+        const ZONE_DATA = [
+            { name: "beach1", totalTuCost: 4640, dovxReward: 400 },
+            { name: "beach2", totalTuCost: 27872, dovxReward: 2405 },
+            { name: "beach3", totalTuCost: 35200, dovxReward: 3037 },
+            { name: "bunker", totalTuCost: 44480, dovxReward: 3838 },
+            { name: "forest1", totalTuCost: 56096, dovxReward: 4840 },
+            { name: "forest2", totalTuCost: 70816, dovxReward: 6110 },
+            { name: "forest3", totalTuCost: 89408, dovxReward: 7714 },
+            { name: "camp", totalTuCost: 112880, dovxReward: 9739 },
+            { name: "hill1", totalTuCost: 148208, dovxReward: 12788 },
+            { name: "hill2", totalTuCost: 194608, dovxReward: 16791 },
+            { name: "hill3", totalTuCost: 258064, dovxReward: 22266 },
+            { name: "radar", totalTuCost: 338848, dovxReward: 29236 },
+            { name: "plain1", totalTuCost: 397536, dovxReward: 34300 },
+            { name: "plain2", totalTuCost: 502832, dovxReward: 43385 },
+            { name: "plain3", totalTuCost: 604656, dovxReward: 52171 },
+            { name: "HQ", totalTuCost: 752000, dovxReward: 64884 },
+        ];
+
+        // Éléments DOM
+        const selector = document.getElementById('zoneSelector');
+        const priceCostTokenInput = document.getElementById('priceCostToken');
+        const priceDovXInput = document.getElementById('priceDovX');
+        const priceWaxUsdInput = document.getElementById('priceWaxUsd');
+        const numberOfAccountsInput = document.getElementById('numberOfAccounts');
+
+        // Initialisation du sélecteur de zone
+        ZONE_DATA.forEach((zone, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            // Coût total par division/déploiement (4 jetons)
+            option.textContent = `${zone.name.toUpperCase()} (Coût Total: ${formatUnits(zone.totalTuCost)} TU)`;
+            selector.appendChild(option);
+        });
+
+
+        const calculate = () => {
+            const selectedIndex = parseInt(selector.value);
+            const selectedZone = ZONE_DATA[selectedIndex];
+
+            // 1. Lecture des prix et paramètres
+            const priceCostToken = parseFrenchFloat(priceCostTokenInput.value);
+            const priceDovX = parseFrenchFloat(priceDovXInput.value);
+            const priceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value);
+            // Assure que le nombre de comptes est au moins 1
+            const numberOfAccounts = Math.max(1, parseInt(numberOfAccountsInput.value) || 1); 
+            
+            // Multiplicateur total basé sur les comptes et les divisions
+            const totalMultiplier = numberOfAccounts * DIVISIONS_PER_ACCOUNT;
+
+            if (!selectedZone || isNaN(priceCostToken) || isNaN(priceDovX) || isNaN(priceWaxUsd)) {
+                // Réinitialiser l'affichage si les données sont invalides
+                document.querySelectorAll('.result-value').forEach(el => el.textContent = '--');
+                return;
+            }
+
+            // --- Calculs pour UNE SEULE division (base) ---
+            const unitsCostPerToken = selectedZone.totalTuCost / 4;
+            const unitsDovX = selectedZone.dovxReward;
+
+            const singleDivisionWaxCost = selectedZone.totalTuCost * priceCostToken;
+            const singleDivisionWaxReward = unitsDovX * priceDovX;
+            
+            // --- Application au Volume Total (WAX) ---
+            const totalWaxCost = singleDivisionWaxCost * totalMultiplier;
+            const totalWaxReward = singleDivisionWaxReward * totalMultiplier;
+            
+            const netProfitLoss = totalWaxReward - totalWaxCost;
+            const totalVolume = totalWaxCost + totalWaxReward; // Volume WAX (24h)
+
+            // --- Conversion USD ---
+            const totalUsdCost = totalWaxCost * priceWaxUsd;
+            const totalUsdReward = totalWaxReward * priceWaxUsd;
+            const netUsdProfitLoss = netProfitLoss * priceWaxUsd;
+            const totalUsdVolume = totalVolume * priceWaxUsd; // Volume USD (24h)
+
+            // --- Calculs Mensuels & Annuels (Nouveau) ---
+            const monthlyUsdVolume = totalUsdVolume * DAYS_IN_MONTH;
+            const annualUsdVolume = totalUsdVolume * DAYS_IN_YEAR;
+
+
+            // --- 3. Indicateurs Stratégiques ---
+            const ratioAmplification = unitsDovX / unitsCostPerToken;
+
+            // --- 4. Affichage des Résultats WAX (24h) ---
+            document.getElementById('resultCost').textContent = formatWAX(totalWaxCost, 4);
+            document.getElementById('resultReward').textContent = formatWAX(totalWaxReward, 4);
+            document.getElementById('resultVolume').textContent = formatWAX(totalVolume, 4);
+            
+            const netElement = document.getElementById('resultNet');
+            netElement.textContent = formatWAX(netProfitLoss, 4);
+            netElement.classList.remove('text-green-400', 'text-red-400');
+            netElement.classList.add(netProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
+
+            // --- 5. Affichage des Résultats USD (24h) ---
+            document.getElementById('resultUsdCost').textContent = formatUSD(totalUsdCost, 4);
+            document.getElementById('resultUsdReward').textContent = formatUSD(totalUsdReward, 4);
+            document.getElementById('resultUsdVolume').textContent = formatUSD(totalUsdVolume, 4);
+
+            const netUsdElement = document.getElementById('resultNetUsd');
+            netUsdElement.textContent = formatUSD(netUsdProfitLoss, 4);
+            netUsdElement.classList.remove('text-green-400', 'text-red-400');
+            netUsdElement.classList.add(netUsdProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
+            
+            // --- 6. Affichage des Résultats USD (Mensuel & Annuel) (Nouveau) ---
+            document.getElementById('resultUsdVolumeMonthly').textContent = formatUSD(monthlyUsdVolume, 2);
+            document.getElementById('resultUsdVolumeAnnual').textContent = formatUSD(annualUsdVolume, 2);
+
+
+            // --- 7. Affichage des Indicateurs par Division ---
+            document.getElementById('unitsCostPerToken').textContent = formatUnits(unitsCostPerToken) + ' unités';
+            document.getElementById('ratioAmplification').textContent = ratioAmplification.toFixed(4) + 'x';
+        };
+
+        // Événements
+        selector.addEventListener('change', calculate);
+        priceCostTokenInput.addEventListener('input', calculate);
+        priceDovXInput.addEventListener('input', calculate);
+        priceWaxUsdInput.addEventListener('input', calculate);
+        numberOfAccountsInput.addEventListener('input', calculate);
+
+        // Lancement initial au chargement
+        window.onload = function() {
+            calculate();
+        };
+
+    </script>
+</body>
+</html>
