@@ -213,13 +213,13 @@
             </div>
         </div>
 
-        <!-- Section des Résultats Mensuels et Annuels en USD (MODIFIÉE) -->
+        <!-- Section des Projections (Mensuel & Annuel) -->
         <div class="card p-6 rounded-xl">
             <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-fuchsia-300 mb-6">
                 4. Projections en USD (Mois & Année)
             </h2>
 
-            <!-- LIGNE 1: Marge Nette (Nouvel Affichage) -->
+            <!-- LIGNE 1: Marge Nette -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <!-- Marge Nette Mensuelle USD -->
                 <div class="p-4 bg-gray-900 rounded-lg border border-teal-700">
@@ -249,13 +249,28 @@
             </div>
         </div>
         
-        <!-- Section ROI et Break-Even (MISE À JOUR) -->
+        <!-- Section ROI et Break-Even (MODIFIÉE) -->
         <div class="card p-6 rounded-xl">
             <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-lime-300 mb-6">
                 5. Analyse de l'Investissement & ROI (Basé sur le prix des packs)
             </h2>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- ROI EN POURCENTAGE -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- ROI Journalier (%) -->
+                <div class="p-4 bg-gray-900 rounded-lg border border-yellow-700">
+                    <p class="text-sm result-label">Rendement Journalier (ROI %) sur Investissement Total</p>
+                    <p id="resultRoiDailyPercent" class="text-3xl mt-1 result-value text-yellow-400">--</p>
+                </div>
+                <!-- ROI Mensuel (%) -->
+                <div class="p-4 bg-gray-900 rounded-lg border border-yellow-700">
+                    <p class="text-sm result-label">Rendement Mensuel (ROI %) sur Investissement Total</p>
+                    <p id="resultRoiMonthlyPercent" class="text-3xl mt-1 result-value text-yellow-400">--</p>
+                </div>
+            </div>
+
+            <!-- Jours pour Break-Even & Statut -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-800 pt-6">
 
                 <!-- Investissement Initial Total WAX -->
                 <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-600">
@@ -359,6 +374,20 @@
         };
         
         /**
+         * Formate une valeur en pourcentage.
+         * @param {number} value La valeur (ex: 0.15 pour 15%).
+         * @param {number} decimales Le nombre de décimales à afficher.
+         * @returns {string} La chaîne formatée en pourcentage.
+         */
+        const formatPercent = (value, decimales = 2) => {
+            if (isNaN(value) || !isFinite(value)) return '--';
+            return (value * 100).toLocaleString('fr-FR', {
+                minimumFractionDigits: decimales,
+                maximumFractionDigits: decimales
+            }) + ' %';
+        };
+        
+        /**
          * Convertit une chaîne de caractères française (avec virgule) en nombre flottant standard (avec point).
          * @param {string} str La chaîne de caractères à parser.
          * @returns {number} Le nombre flottant correspondant.
@@ -412,17 +441,17 @@
         const priceDovXInput = document.getElementById('priceDovX');
         const priceWaxUsdInput = document.getElementById('priceWaxUsd');
         const numberOfAccountsInput = document.getElementById('numberOfAccounts');
-        // NOUVEAU: Input pour divisions par compte
+        // Input pour divisions par compte
         const divisionsPerAccountInput = document.getElementById('divisionsPerAccount');
         const dovxPriceSlider = document.getElementById('dovxPriceSlider');
 
         // Éléments pour le ROI et les Packs
         const numberOfPacksInput = document.getElementById('numberOfPacks');
-        // NOUVEAU: Input pour divisions par pack
+        // Input pour divisions par pack
         const divisionsPerPackInput = document.getElementById('divisionsPerPack');
         const pricePerPackWaxInput = document.getElementById('pricePerPackWax');
         const pricePerPackUsdInput = document.getElementById('pricePerPackUsd'); 
-        // NOUVEAU: Affichage du total de divisions achetées
+        // Affichage du total de divisions achetées
         const resultTotalDivisionsPurchasedElement = document.getElementById('resultTotalDivisionsPurchased');
 
 
@@ -474,6 +503,9 @@
             
             const pricePerPackUsd = pricePerPackUsdInputVal; // C'est l'input direct USD
 
+            // Investissement Total en WAX (base pour le ROI en WAX)
+            const totalInvestmentWAX = numberOfPacks * pricePerPackWax;
+
 
             // 2. Détermination des prix basés sur la réglette
             const sliderValue = parseInt(dovxPriceSlider.value);
@@ -506,31 +538,34 @@
             const totalWaxCost = singleDivisionWaxCost * totalMultiplier;
             const totalWaxReward = singleDivisionWaxReward * totalMultiplier;
             
-            const netProfitLoss = totalWaxReward - totalWaxCost;
+            const netProfitLoss = totalWaxReward - totalWaxCost; // Marge Nette Journalière (WAX)
             const totalVolume = totalWaxCost + totalWaxReward; // Volume WAX (24h)
 
             // --- Conversion USD ---
             const totalUsdCost = totalWaxCost * priceWaxUsd;
             const totalUsdReward = totalWaxReward * priceWaxUsd;
-            const netUsdProfitLoss = netProfitLoss * priceWaxUsd;
+            const netUsdProfitLoss = netProfitLoss * priceWaxUsd; // Marge Nette Journalière (USD)
             const totalUsdVolume = totalVolume * priceWaxUsd; // Volume USD (24h)
 
             // --- Calculs Mensuels & Annuels ---
             const monthlyUsdVolume = totalUsdVolume * DAYS_IN_MONTH;
             const annualUsdVolume = totalUsdVolume * DAYS_IN_YEAR;
             
-            // NOUVEAU: Calculs Marge Nette Mensuelle et Annuelle
+            // Calculs Marge Nette Mensuelle et Annuelle
             const monthlyNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_MONTH;
             const annualNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_YEAR;
             
             // --- Calculs de l'Investissement et ROI ---
-            // Le calcul de l'investissement total se base sur le prix en WAX (pricePerPackWax) pour être cohérent avec netProfitLoss (en WAX)
-            const totalInvestmentWAX = numberOfPacks * pricePerPackWax;
-            
             let roiDays = Infinity;
             let roiStatus = 'Non Applicable (Pas d\'investissement)';
-
+            let roiDailyPercent = 0;
+            let roiMonthlyPercent = 0;
+            
             if (totalInvestmentWAX > 0) {
+                // ROI Journalier et Mensuel en pourcentage (basé sur la marge nette WAX)
+                roiDailyPercent = netProfitLoss / totalInvestmentWAX;
+                roiMonthlyPercent = roiDailyPercent * DAYS_IN_MONTH;
+
                 if (netProfitLoss > 0) {
                     roiDays = totalInvestmentWAX / netProfitLoss;
                     roiStatus = `ROI estimé en ${formatUnits(roiDays)} jours`;
@@ -574,13 +609,13 @@
             document.getElementById('resultUsdVolumeMonthly').textContent = formatUSD(monthlyUsdVolume, 2);
             document.getElementById('resultUsdVolumeAnnual').textContent = formatUSD(annualUsdVolume, 2);
             
-            // NOUVEAU: Affichage de la Marge Nette Mensuelle
+            // Affichage de la Marge Nette Mensuelle
             const netUsdMonthlyElement = document.getElementById('resultNetUsdMonthly');
             netUsdMonthlyElement.textContent = formatUSD(monthlyNetUsdProfitLoss, 2);
             netUsdMonthlyElement.classList.remove('text-green-400', 'text-red-400');
             netUsdMonthlyElement.classList.add(monthlyNetUsdProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
             
-            // NOUVEAU: Affichage de la Marge Nette Annuelle
+            // Affichage de la Marge Nette Annuelle
             const netUsdAnnualElement = document.getElementById('resultNetUsdAnnual');
             netUsdAnnualElement.textContent = formatUSD(annualNetUsdProfitLoss, 2);
             netUsdAnnualElement.classList.remove('text-green-400', 'text-red-400');
@@ -588,6 +623,18 @@
             
             // --- Affichage des Résultats ROI ---
             document.getElementById('resultTotalInvestment').textContent = formatWAX(totalInvestmentWAX, 0);
+
+            // NOUVEAU: Affichage du ROI en Pourcentage
+            const roiDailyPercentElement = document.getElementById('resultRoiDailyPercent');
+            roiDailyPercentElement.textContent = formatPercent(roiDailyPercent, 4);
+            roiDailyPercentElement.classList.remove('text-green-400', 'text-red-400');
+            roiDailyPercentElement.classList.add(roiDailyPercent >= 0 ? 'text-green-400' : 'text-red-400');
+            
+            const roiMonthlyPercentElement = document.getElementById('resultRoiMonthlyPercent');
+            roiMonthlyPercentElement.textContent = formatPercent(roiMonthlyPercent, 2);
+            roiMonthlyPercentElement.classList.remove('text-green-400', 'text-red-400');
+            roiMonthlyPercentElement.classList.add(roiMonthlyPercent >= 0 ? 'text-green-400' : 'text-red-400');
+
 
             const roiDaysElement = document.getElementById('resultRoiDays');
             roiDaysElement.textContent = (roiDays === Infinity) ? '--' : formatUnits(roiDays);
