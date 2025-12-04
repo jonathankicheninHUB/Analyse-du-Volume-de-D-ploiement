@@ -37,7 +37,7 @@
     <div id="app" class="w-full max-w-5xl space-y-8 mt-10">
 
         <h1 class="text-3xl font-bold text-center text-teal-400 mb-6">
-            Analyse du Volume de Déploiement Multi-Comptes <span class="text-yellow-400">(3 Divisions/Compte)</span>
+            Analyse du Volume de Déploiement Multi-Comptes <span class="text-yellow-400">(Ajustable)</span>
         </h1>
 
         <!-- Section des Paramètres d'Entrée -->
@@ -50,8 +50,14 @@
                 
                 <!-- Nombre de Comptes -->
                 <div>
-                    <label for="numberOfAccounts" class="block text-sm font-medium result-label">Nombre de Comptes (Chacun avec 3 Divisions)</label>
+                    <label for="numberOfAccounts" class="block text-sm font-medium result-label">Nombre de Comptes</label>
                     <input type="number" id="numberOfAccounts" value="1" min="1" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" inputmode="numeric">
+                </div>
+
+                <!-- Divisions par Compte (Déployées) - NOUVEAU INPUT -->
+                <div>
+                    <label for="divisionsPerAccount" class="block text-sm font-medium result-label">Divisions par Compte (Déployées)</label>
+                    <input type="number" id="divisionsPerAccount" value="3" min="1" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-yellow-500 focus:border-yellow-500" inputmode="numeric">
                 </div>
                 
                 <!-- Sélecteur de Zone -->
@@ -69,7 +75,44 @@
                 </div>
             </div>
 
-            <!-- Contrôle du prix des tokens via slider (NOUVEAU) -->
+            <!-- Investment Packs and Price (MISE À JOUR) -->
+            <div class="border-t border-gray-800 pt-4">
+                <h3 class="text-sm font-medium result-label mb-3 text-lime-300">
+                    Investissement Initial (Packs)
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Nombre de Packs -->
+                    <div>
+                        <label for="numberOfPacks" class="block text-sm font-medium result-label">Nombre de Packs Achetés (Max 10)</label>
+                        <input type="number" id="numberOfPacks" value="1" min="0" max="10" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-lime-500 focus:border-lime-500" inputmode="numeric">
+                    </div>
+
+                    <!-- Divisions par Pack (NOUVEL INPUT) -->
+                    <div>
+                        <label for="divisionsPerPack" class="block text-sm font-medium result-label">Divisions par Pack Acheté</label>
+                        <input type="number" id="divisionsPerPack" value="10" min="0" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-lime-500 focus:border-lime-500" inputmode="numeric">
+                    </div>
+
+                    <!-- Prix par Pack (USD) - CHAMP D'ENTRÉE -->
+                    <div>
+                        <label for="pricePerPackUsd" class="block text-sm font-medium result-label">Prix par Pack (en USD $) [Entrée]</label>
+                        <input type="text" id="pricePerPackUsd" value="50,00" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-lime-500 focus:border-lime-500" inputmode="decimal">
+                    </div>
+                    <!-- Prix par Pack (WAX) - AUTOMATIQUE -->
+                    <div>
+                        <label for="pricePerPackWax" class="block text-sm font-medium result-label">Prix par Pack (en WAX) [Automatique]</label>
+                        <input type="text" id="pricePerPackWax" value="--,-" readonly class="input-style mt-1 block w-full p-2.5 rounded-lg text-lime-400" title="Calculé: Prix USD / WAX/USD" inputmode="decimal">
+                    </div>
+                </div>
+                
+                 <!-- Total Divisions Achetées (NOUVEL AFFICHAGE) -->
+                <div class="mt-4 p-3 bg-indigo-900/30 rounded-lg border border-indigo-700">
+                     <p class="text-sm result-label">Total Divisions Achetées (Capacité)</p>
+                     <p id="resultTotalDivisionsPurchased" class="text-xl mt-1 text-indigo-300 font-bold">--</p>
+                </div>
+            </div>
+            
+            <!-- Contrôle du prix des tokens via slider (Réglette DOVX) -->
             <div class="border-t border-gray-800 pt-4">
                 <label class="block text-sm font-medium result-label mb-2 text-teal-300">
                     Ajuster le Prix du $DOVX$ (Le coût $TU$ suit le même ratio)
@@ -82,6 +125,7 @@
                     <p class="mt-2 text-sm text-gray-400 flex justify-between">
                         <span>Min WAX: <span id="minWaxDisplay" class="text-white">--</span></span>
                         <span class="text-yellow-400 font-bold">Prix actuel du $DOVX$: <span id="sliderValueDisplay">--</span> WAX</span>
+                        <!-- CORRECTION: L'ID était incorrect et causait l'erreur -->
                         <span>Max WAX: <span id="maxWaxDisplay" class="text-white">--</span></span>
                     </p>
                 </div>
@@ -170,7 +214,7 @@
             </div>
         </div>
 
-        <!-- Section des Résultats Mensuels et Annuels en USD (Nouveau) -->
+        <!-- Section des Résultats Mensuels et Annuels en USD -->
         <div class="card p-6 rounded-xl">
             <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-fuchsia-300 mb-6">
                 4. Volume en USD Projetté (Mois & Année)
@@ -191,10 +235,40 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Section ROI et Break-Even (MISE À JOUR) -->
+        <div class="card p-6 rounded-xl">
+            <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-lime-300 mb-6">
+                5. Analyse de l'Investissement & ROI (Basé sur le prix des packs)
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <!-- Investissement Initial Total WAX -->
+                <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-600">
+                    <p class="text-sm result-label">Investissement Initial Total (WAX)</p>
+                    <p id="resultTotalInvestment" class="text-2xl mt-1 text-lime-400 result-value">--</p>
+                </div>
+
+                <!-- Jours pour atteindre le ROI (Break-Even) -->
+                <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-600">
+                    <p class="text-sm result-label">Jours pour atteindre le ROI (Break-Even)</p>
+                    <p id="resultRoiDays" class="text-2xl mt-1 text-lime-400 result-value">--</p>
+                </div>
+                
+                <!-- Statut du ROI -->
+                <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-600">
+                    <p class="text-sm result-label">Statut du ROI</p>
+                    <p id="resultRoiStatus" class="text-2xl mt-1 result-value">--</p>
+                </div>
+
+            </div>
+        </div>
+
 
         <!-- Indicateurs pour une seule division (Non multipliés) -->
         <div class="mt-8 pt-4 border-t border-gray-700 card p-6 rounded-xl">
-            <h3 class="text-lg font-semibold text-yellow-400">5. Indicateurs par Division (Non multipliés)</h3>
+            <h3 class="text-lg font-semibold text-yellow-400">6. Indicateurs par Division (Non multipliés)</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                 <div class="text-sm">
                     <span class="font-bold text-gray-400">Coût d'un Jeton de Coût (Unités TU):</span>
@@ -221,6 +295,11 @@
         const COST_DOVX_RATIO = BASE_PRICE_COST_TOKEN / BASE_PRICE_DOVX;
         // Échelle utilisée pour la réglette: la valeur de la réglette (S) correspond à S / 100000 WAX
         const DOVX_SLIDER_SCALER = 100000.0; 
+        
+        // Constantes de temps
+        const DAYS_IN_MONTH = 30;
+        const DAYS_IN_YEAR = 365;
+        // NOTE: La constante DIVISIONS_PER_ACCOUNT a été remplacée par l'input divisionsPerAccount pour plus de flexibilité.
 
         // --- Fonctions de formatage ---
 
@@ -260,7 +339,7 @@
          * @returns {string} La chaîne formatée en unités.
          */
         const formatUnits = (value) => {
-            if (isNaN(value)) return '--';
+            if (isNaN(value) || !isFinite(value)) return '--';
             // Utilise 0 décimale pour les grands nombres entiers, mais autorise 2 décimales si nécessaire
             const maxDigits = (value % 1 !== 0) ? 2 : 0;
             return value.toLocaleString('fr-FR', { maximumFractionDigits: maxDigits });
@@ -290,12 +369,6 @@
 
         // --------------------------------------------------------------------------
 
-        // Constantes de temps
-        const DAYS_IN_MONTH = 30;
-        const DAYS_IN_YEAR = 365;
-
-        // Facteur de multiplication pour le nombre de divisions par compte
-        const DIVISIONS_PER_ACCOUNT = 3;
 
         // Définition des données de base de l'économie (Unités divisées par 1000 pour que beach1 = 1160 par jeton)
         // Les valeurs ici représentent le coût/récompense pour UNE SEULE DIVISION/DÉPLOIEMENT.
@@ -316,6 +389,8 @@
             { name: "plain2", totalTuCost: 502832, dovxReward: 43385 },
             { name: "plain3", totalTuCost: 604656, dovxReward: 52171 },
             { name: "HQ", totalTuCost: 752000, dovxReward: 64884 },
+            // Nouvelle zone de stacking (Exemple de valeurs pour le calcul)
+            { name: "STAKING", totalTuCost: 650000, dovxReward: 50000 },
         ];
 
         // Éléments DOM
@@ -324,7 +399,18 @@
         const priceDovXInput = document.getElementById('priceDovX');
         const priceWaxUsdInput = document.getElementById('priceWaxUsd');
         const numberOfAccountsInput = document.getElementById('numberOfAccounts');
+        // NOUVEAU: Input pour divisions par compte
+        const divisionsPerAccountInput = document.getElementById('divisionsPerAccount');
         const dovxPriceSlider = document.getElementById('dovxPriceSlider');
+
+        // Éléments pour le ROI et les Packs
+        const numberOfPacksInput = document.getElementById('numberOfPacks');
+        // NOUVEAU: Input pour divisions par pack
+        const divisionsPerPackInput = document.getElementById('divisionsPerPack');
+        const pricePerPackWaxInput = document.getElementById('pricePerPackWax');
+        const pricePerPackUsdInput = document.getElementById('pricePerPackUsd'); 
+        // NOUVEAU: Affichage du total de divisions achetées
+        const resultTotalDivisionsPurchasedElement = document.getElementById('resultTotalDivisionsPurchased');
 
 
         // Initialisation du sélecteur de zone
@@ -342,31 +428,62 @@
             const selectedZone = ZONE_DATA[selectedIndex];
 
             // 1. Lecture des paramètres de base
-            // Le prix du DOVX est déterminé par la réglette, les inputs sont pour l'affichage
             const priceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value);
             const numberOfAccounts = Math.max(1, parseInt(numberOfAccountsInput.value) || 1); 
+            // Lecture des divisions déployées par compte
+            const divisionsPerAccount = Math.max(1, parseInt(divisionsPerAccountInput.value) || 1);
             
+            // Paramètres Packs/ROI
+            const numberOfPacks = Math.max(0, parseInt(numberOfPacksInput.value) || 0); 
+            // Lecture des divisions par pack
+            const divisionsPerPack = Math.max(0, parseInt(divisionsPerPackInput.value) || 0);
+            
+            // Calcul et affichage du total des divisions achetées
+            const totalDivisionsPurchased = numberOfPacks * divisionsPerPack;
+            resultTotalDivisionsPurchasedElement.textContent = formatUnits(totalDivisionsPurchased);
+            
+            // Le prix USD est l'entrée principale
+            const pricePerPackUsdInputVal = parseFrenchFloat(pricePerPackUsdInput.value);
+            
+            // Calcul du prix du pack en WAX (base du ROI)
+            let pricePerPackWax = 0;
+            if (priceWaxUsd > 0 && !isNaN(pricePerPackUsdInputVal)) {
+                // Formule: Prix WAX = Prix USD / Taux WAX/USD
+                pricePerPackWax = pricePerPackUsdInputVal / priceWaxUsd;
+            }
+
+            // Mise à jour de l'affichage du prix WAX du pack (maintenant l'affichage automatique)
+            // On formate en WAX sans décimales pour les WAX entiers (comme 1000 WAX)
+            pricePerPackWaxInput.value = pricePerPackWax.toLocaleString('fr-FR', { 
+                minimumFractionDigits: 0, 
+                maximumFractionDigits: 0 
+            }); 
+            
+            const pricePerPackUsd = pricePerPackUsdInputVal; // C'est l'input direct USD
+
+
             // 2. Détermination des prix basés sur la réglette
             const sliderValue = parseInt(dovxPriceSlider.value);
             const newPriceDovX = sliderValue / DOVX_SLIDER_SCALER; 
             const newPriceCostToken = newPriceDovX * COST_DOVX_RATIO; // Maintient le ratio
 
-            // Mise à jour de l'affichage des prix
+            // Mise à jour de l'affichage des prix des tokens
             priceDovXInput.value = newPriceDovX.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
             priceCostTokenInput.value = newPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
             document.getElementById('sliderValueDisplay').textContent = formatPriceDisplay(sliderValue);
 
-            // Multiplicateur total basé sur les comptes et les divisions
-            const totalMultiplier = numberOfAccounts * DIVISIONS_PER_ACCOUNT;
+            // Multiplicateur total basé sur les comptes et les divisions PAR COMPTE
+            const totalMultiplier = numberOfAccounts * divisionsPerAccount;
 
-            if (!selectedZone || isNaN(newPriceDovX) || isNaN(newPriceCostToken) || isNaN(priceWaxUsd)) {
+            if (!selectedZone || isNaN(newPriceDovX) || isNaN(newPriceCostToken) || isNaN(priceWaxUsd) || isNaN(pricePerPackWax)) {
                 // Réinitialiser l'affichage si les données sont invalides
                 document.querySelectorAll('.result-value').forEach(el => el.textContent = '--');
+                resultTotalDivisionsPurchasedElement.textContent = '--';
                 return;
             }
 
             // --- Calculs pour UNE SEULE division (base) ---
-            const unitsCostPerToken = selectedZone.totalTuCost / 4;
+            const unitsCostPerTokenBase = selectedZone.totalTuCost / 4;
             const unitsDovX = selectedZone.dovxReward;
 
             const singleDivisionWaxCost = selectedZone.totalTuCost * newPriceCostToken; // Utilisation du nouveau prix TU
@@ -388,9 +505,33 @@
             // --- Calculs Mensuels & Annuels ---
             const monthlyUsdVolume = totalUsdVolume * DAYS_IN_MONTH;
             const annualUsdVolume = totalUsdVolume * DAYS_IN_YEAR;
+            
+            // --- Calculs de l'Investissement et ROI ---
+            // Le calcul de l'investissement total se base sur le prix en WAX (pricePerPackWax) pour être cohérent avec netProfitLoss (en WAX)
+            const totalInvestmentWAX = numberOfPacks * pricePerPackWax;
+            
+            let roiDays = Infinity;
+            let roiStatus = 'Non Applicable (Pas d\'investissement)';
+
+            if (totalInvestmentWAX > 0) {
+                if (netProfitLoss > 0) {
+                    roiDays = totalInvestmentWAX / netProfitLoss;
+                    roiStatus = `ROI estimé en ${formatUnits(roiDays)} jours`;
+                } else if (netProfitLoss < 0) {
+                    roiStatus = 'Déficit : ROI impossible';
+                    roiDays = Infinity;
+                } else {
+                    roiStatus = 'Marge Nulle : ROI impossible';
+                    roiDays = Infinity;
+                }
+            } else {
+                roiDays = Infinity;
+                roiStatus = 'Non Applicable (Pas d\'investissement)';
+            }
+
 
             // --- Indicateurs Stratégiques ---
-            const ratioAmplification = unitsDovX / unitsCostPerToken;
+            const ratioAmplification = unitsDovX / unitsCostPerTokenBase;
 
             // --- Affichage des Résultats WAX (24h) ---
             document.getElementById('resultCost').textContent = formatWAX(totalWaxCost, 4);
@@ -415,29 +556,64 @@
             // --- Affichage des Résultats USD (Mensuel & Annuel) ---
             document.getElementById('resultUsdVolumeMonthly').textContent = formatUSD(monthlyUsdVolume, 2);
             document.getElementById('resultUsdVolumeAnnual').textContent = formatUSD(annualUsdVolume, 2);
+            
+            // --- Affichage des Résultats ROI ---
+            document.getElementById('resultTotalInvestment').textContent = formatWAX(totalInvestmentWAX, 0);
 
+            const roiDaysElement = document.getElementById('resultRoiDays');
+            roiDaysElement.textContent = (roiDays === Infinity) ? '--' : formatUnits(roiDays);
+            
+            const roiStatusElement = document.getElementById('resultRoiStatus');
+            roiStatusElement.textContent = roiStatus;
+
+            roiStatusElement.classList.remove('text-green-400', 'text-red-400', 'text-lime-400', 'text-gray-400');
+            if (roiDays !== Infinity && netProfitLoss > 0) {
+                roiStatusElement.classList.add('text-green-400');
+            } else if (netProfitLoss < 0) {
+                roiStatusElement.classList.add('text-red-400');
+            } else if (totalInvestmentWAX > 0) {
+                 roiStatusElement.classList.add('text-lime-400'); // Neutral for zero margin
+            } else {
+                 roiStatusElement.classList.add('text-gray-400'); // N/A
+            }
 
             // --- Affichage des Indicateurs par Division ---
-            document.getElementById('unitsCostPerToken').textContent = formatUnits(unitsCostPerToken) + ' unités';
+            document.getElementById('unitsCostPerToken').textContent = formatUnits(unitsCostPerTokenBase) + ' unités';
             document.getElementById('ratioAmplification').textContent = ratioAmplification.toFixed(4) + 'x';
         };
 
         // Initialisation de l'affichage du slider et des valeurs min/max
         const initializeSliderDisplay = () => {
+            // S'assurer que tous les éléments existent avant d'essayer de les modifier
             const minWaxDisplay = document.getElementById('minWaxDisplay');
             const maxWaxDisplay = document.getElementById('maxWaxDisplay');
+            const sliderValueDisplay = document.getElementById('sliderValueDisplay');
             
-            document.getElementById('sliderValueDisplay').textContent = formatPriceDisplay(dovxPriceSlider.value);
-            minWaxDisplay.textContent = formatPriceDisplay(dovxPriceSlider.min);
-            maxWaxDisplay.textContent = formatPriceDisplay(dovxPriceSlider.max);
+            if (sliderValueDisplay) {
+                 sliderValueDisplay.textContent = formatPriceDisplay(dovxPriceSlider.value);
+            }
+           
+            // Correction: Ces éléments sont maintenant garantis d'exister si le HTML est chargé correctement
+            if (minWaxDisplay) {
+                minWaxDisplay.textContent = formatPriceDisplay(dovxPriceSlider.min);
+            }
+            if (maxWaxDisplay) {
+                maxWaxDisplay.textContent = formatPriceDisplay(dovxPriceSlider.max);
+            }
         };
 
 
         // Événements
+        // Tous les champs d'entrée qui affectent les calculs déclenchent la fonction 'calculate'
         selector.addEventListener('change', calculate);
-        dovxPriceSlider.addEventListener('input', calculate); // Le slider déclenche le calcul
-        priceWaxUsdInput.addEventListener('input', calculate); // Le prix WAX/USD est toujours manuel
+        dovxPriceSlider.addEventListener('input', calculate); 
+        priceWaxUsdInput.addEventListener('input', calculate); 
         numberOfAccountsInput.addEventListener('input', calculate);
+        divisionsPerAccountInput.addEventListener('input', calculate); 
+        numberOfPacksInput.addEventListener('input', calculate);
+        divisionsPerPackInput.addEventListener('input', calculate); 
+        pricePerPackUsdInput.addEventListener('input', calculate);
+
 
         // Lancement initial au chargement
         window.onload = function() {
