@@ -125,7 +125,6 @@
                     <p class="mt-2 text-sm text-gray-400 flex justify-between">
                         <span>Min WAX: <span id="minWaxDisplay" class="text-white">--</span></span>
                         <span class="text-yellow-400 font-bold">Prix actuel du $DOVX$: <span id="sliderValueDisplay">--</span> WAX</span>
-                        <!-- CORRECTION: L'ID était incorrect et causait l'erreur -->
                         <span>Max WAX: <span id="maxWaxDisplay" class="text-white">--</span></span>
                     </p>
                 </div>
@@ -214,14 +213,28 @@
             </div>
         </div>
 
-        <!-- Section des Résultats Mensuels et Annuels en USD -->
+        <!-- Section des Résultats Mensuels et Annuels en USD (MODIFIÉE) -->
         <div class="card p-6 rounded-xl">
             <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-fuchsia-300 mb-6">
-                4. Volume en USD Projetté (Mois & Année)
+                4. Projections en USD (Mois & Année)
             </h2>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- LIGNE 1: Marge Nette (Nouvel Affichage) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Marge Nette Mensuelle USD -->
+                <div class="p-4 bg-gray-900 rounded-lg border border-teal-700">
+                    <p class="text-sm result-label">Marge Nette Mensuelle (USD $)</p>
+                    <p id="resultNetUsdMonthly" class="text-3xl mt-1 result-value text-teal-400">--</p>
+                </div>
+                <!-- Marge Nette Annuelle USD -->
+                <div class="p-4 bg-gray-900 rounded-lg border border-teal-700">
+                    <p class="text-sm result-label">Marge Nette Annuelle (USD $)</p>
+                    <p id="resultNetUsdAnnual" class="text-3xl mt-1 result-value text-teal-400">--</p>
+                </div>
+            </div>
 
+            <!-- LIGNE 2: Volume Total -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-gray-800 pt-6">
                 <!-- Volume Mensuel USD -->
                 <div class="p-4 bg-gray-900 rounded-lg border border-fuchsia-700">
                     <p class="text-sm result-label">Volume Transactionnel Mensuel (USD $)</p>
@@ -506,6 +519,10 @@
             const monthlyUsdVolume = totalUsdVolume * DAYS_IN_MONTH;
             const annualUsdVolume = totalUsdVolume * DAYS_IN_YEAR;
             
+            // NOUVEAU: Calculs Marge Nette Mensuelle et Annuelle
+            const monthlyNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_MONTH;
+            const annualNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_YEAR;
+            
             // --- Calculs de l'Investissement et ROI ---
             // Le calcul de l'investissement total se base sur le prix en WAX (pricePerPackWax) pour être cohérent avec netProfitLoss (en WAX)
             const totalInvestmentWAX = numberOfPacks * pricePerPackWax;
@@ -557,6 +574,18 @@
             document.getElementById('resultUsdVolumeMonthly').textContent = formatUSD(monthlyUsdVolume, 2);
             document.getElementById('resultUsdVolumeAnnual').textContent = formatUSD(annualUsdVolume, 2);
             
+            // NOUVEAU: Affichage de la Marge Nette Mensuelle
+            const netUsdMonthlyElement = document.getElementById('resultNetUsdMonthly');
+            netUsdMonthlyElement.textContent = formatUSD(monthlyNetUsdProfitLoss, 2);
+            netUsdMonthlyElement.classList.remove('text-green-400', 'text-red-400');
+            netUsdMonthlyElement.classList.add(monthlyNetUsdProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
+            
+            // NOUVEAU: Affichage de la Marge Nette Annuelle
+            const netUsdAnnualElement = document.getElementById('resultNetUsdAnnual');
+            netUsdAnnualElement.textContent = formatUSD(annualNetUsdProfitLoss, 2);
+            netUsdAnnualElement.classList.remove('text-green-400', 'text-red-400');
+            netUsdAnnualElement.classList.add(annualNetUsdProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
+            
             // --- Affichage des Résultats ROI ---
             document.getElementById('resultTotalInvestment').textContent = formatWAX(totalInvestmentWAX, 0);
 
@@ -584,16 +613,15 @@
 
         // Initialisation de l'affichage du slider et des valeurs min/max
         const initializeSliderDisplay = () => {
-            // S'assurer que tous les éléments existent avant d'essayer de les modifier
             const minWaxDisplay = document.getElementById('minWaxDisplay');
             const maxWaxDisplay = document.getElementById('maxWaxDisplay');
             const sliderValueDisplay = document.getElementById('sliderValueDisplay');
             
+            // Utilisation des vérifications de nullité pour garantir la robustesse
             if (sliderValueDisplay) {
                  sliderValueDisplay.textContent = formatPriceDisplay(dovxPriceSlider.value);
             }
            
-            // Correction: Ces éléments sont maintenant garantis d'exister si le HTML est chargé correctement
             if (minWaxDisplay) {
                 minWaxDisplay.textContent = formatPriceDisplay(dovxPriceSlider.min);
             }
