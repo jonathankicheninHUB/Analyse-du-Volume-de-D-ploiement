@@ -61,25 +61,45 @@
                         <!-- Options seront remplies par JS -->
                     </select>
                 </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-gray-800 pt-4">
-                <!-- Prix des Jetons de Coût -->
-                <div>
-                    <label for="priceCostToken" class="block text-sm font-medium result-label">Prix WAX des Jetons de Coût (DOV-H, R, S, F)</label>
-                    <input type="text" id="priceCostToken" value="0,00045262" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-teal-500 focus:border-teal-500" inputmode="decimal">
-                </div>
-                <!-- Prix du Jeton de Récompense -->
-                <div>
-                    <label for="priceDovX" class="block text-sm font-medium result-label">Prix WAX du Jeton de Récompense (DOVX)</label>
-                    <input type="text" id="priceDovX" value="0,00528552" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-teal-500 focus:border-teal-500" inputmode="decimal">
-                </div>
+                
                 <!-- Prix WAX/USD -->
                 <div>
                     <label for="priceWaxUsd" class="block text-sm font-medium result-label">Prix d'un WAX en USD ($)</label>
                     <input type="text" id="priceWaxUsd" value="0,05" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-pink-500 focus:border-pink-500" inputmode="decimal">
                 </div>
             </div>
+
+            <!-- Contrôle du prix des tokens via slider (NOUVEAU) -->
+            <div class="border-t border-gray-800 pt-4">
+                <label class="block text-sm font-medium result-label mb-2 text-teal-300">
+                    Ajuster le Prix du $DOVX$ (Le coût $TU$ suit le même ratio)
+                </label>
+                <div class="relative pt-2">
+                    <!-- Slider: 200 à 200000 pour une plage de 0.00200000 à 2.00000000 WAX -->
+                    <input type="range" id="dovxPriceSlider" min="200" max="200000" value="529" step="1" 
+                           class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer transition duration-150 ease-in-out" 
+                           oninput="document.getElementById('sliderValueDisplay').textContent=formatPriceDisplay(this.value)">
+                    <p class="mt-2 text-sm text-gray-400 flex justify-between">
+                        <span>Min WAX: <span id="minWaxDisplay" class="text-white">--</span></span>
+                        <span class="text-yellow-400 font-bold">Prix actuel du $DOVX$: <span id="sliderValueDisplay">--</span> WAX</span>
+                        <span>Max WAX: <span id="maxWaxDisplay" class="text-white">--</span></span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
+                <!-- Prix du Jeton de Récompense (Affichage) -->
+                <div>
+                    <label for="priceDovX" class="block text-sm font-medium result-label">Prix WAX du Jeton de Récompense (DOVX) [Automatique]</label>
+                    <input type="text" id="priceDovX" value="0,00528552" readonly class="input-style mt-1 block w-full p-2.5 rounded-lg text-green-400" title="Contrôlé par la réglette" inputmode="decimal">
+                </div>
+                <!-- Prix des Jetons de Coût (Affichage) -->
+                <div>
+                    <label for="priceCostToken" class="block text-sm font-medium result-label">Prix WAX des Jetons de Coût (TU) [Automatique]</label>
+                    <input type="text" id="priceCostToken" value="0,00045262" readonly class="input-style mt-1 block w-full p-2.5 rounded-lg text-red-400" title="Ajusté automatiquement par ratio" inputmode="decimal">
+                </div>
+            </div>
+
         </div>
 
         <!-- Section des Résultats en WAX -->
@@ -193,6 +213,15 @@
     </div>
 
     <script>
+        // --- Globals for Ratio Calculation ---
+        // Prix de base initial pour calculer le ratio
+        const BASE_PRICE_DOVX = 0.00528552;
+        const BASE_PRICE_COST_TOKEN = 0.00045262;
+        // Ratio constant: (Prix Jeton de Coût) / (Prix DOVX)
+        const COST_DOVX_RATIO = BASE_PRICE_COST_TOKEN / BASE_PRICE_DOVX;
+        // Échelle utilisée pour la réglette: la valeur de la réglette (S) correspond à S / 100000 WAX
+        const DOVX_SLIDER_SCALER = 100000.0; 
+
         // --- Fonctions de formatage ---
 
         /**
@@ -248,6 +277,17 @@
             const standardStr = str.toString().replace(',', '.');
             return parseFloat(standardStr);
         };
+        
+        /**
+         * Formate la valeur entière du slider en prix WAX pour l'affichage.
+         * @param {string} sliderValue La valeur du slider (chaîne).
+         * @returns {string} La chaîne formatée en WAX (8 décimales).
+         */
+        const formatPriceDisplay = (sliderValue) => {
+            const price = parseInt(sliderValue) / DOVX_SLIDER_SCALER;
+            return price.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+        };
+
         // --------------------------------------------------------------------------
 
         // Constantes de temps
@@ -284,6 +324,8 @@
         const priceDovXInput = document.getElementById('priceDovX');
         const priceWaxUsdInput = document.getElementById('priceWaxUsd');
         const numberOfAccountsInput = document.getElementById('numberOfAccounts');
+        const dovxPriceSlider = document.getElementById('dovxPriceSlider');
+
 
         // Initialisation du sélecteur de zone
         ZONE_DATA.forEach((zone, index) => {
@@ -299,17 +341,25 @@
             const selectedIndex = parseInt(selector.value);
             const selectedZone = ZONE_DATA[selectedIndex];
 
-            // 1. Lecture des prix et paramètres
-            const priceCostToken = parseFrenchFloat(priceCostTokenInput.value);
-            const priceDovX = parseFrenchFloat(priceDovXInput.value);
+            // 1. Lecture des paramètres de base
+            // Le prix du DOVX est déterminé par la réglette, les inputs sont pour l'affichage
             const priceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value);
-            // Assure que le nombre de comptes est au moins 1
             const numberOfAccounts = Math.max(1, parseInt(numberOfAccountsInput.value) || 1); 
             
+            // 2. Détermination des prix basés sur la réglette
+            const sliderValue = parseInt(dovxPriceSlider.value);
+            const newPriceDovX = sliderValue / DOVX_SLIDER_SCALER; 
+            const newPriceCostToken = newPriceDovX * COST_DOVX_RATIO; // Maintient le ratio
+
+            // Mise à jour de l'affichage des prix
+            priceDovXInput.value = newPriceDovX.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+            priceCostTokenInput.value = newPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+            document.getElementById('sliderValueDisplay').textContent = formatPriceDisplay(sliderValue);
+
             // Multiplicateur total basé sur les comptes et les divisions
             const totalMultiplier = numberOfAccounts * DIVISIONS_PER_ACCOUNT;
 
-            if (!selectedZone || isNaN(priceCostToken) || isNaN(priceDovX) || isNaN(priceWaxUsd)) {
+            if (!selectedZone || isNaN(newPriceDovX) || isNaN(newPriceCostToken) || isNaN(priceWaxUsd)) {
                 // Réinitialiser l'affichage si les données sont invalides
                 document.querySelectorAll('.result-value').forEach(el => el.textContent = '--');
                 return;
@@ -319,8 +369,8 @@
             const unitsCostPerToken = selectedZone.totalTuCost / 4;
             const unitsDovX = selectedZone.dovxReward;
 
-            const singleDivisionWaxCost = selectedZone.totalTuCost * priceCostToken;
-            const singleDivisionWaxReward = unitsDovX * priceDovX;
+            const singleDivisionWaxCost = selectedZone.totalTuCost * newPriceCostToken; // Utilisation du nouveau prix TU
+            const singleDivisionWaxReward = unitsDovX * newPriceDovX; // Utilisation du nouveau prix DOVX
             
             // --- Application au Volume Total (WAX) ---
             const totalWaxCost = singleDivisionWaxCost * totalMultiplier;
@@ -335,15 +385,14 @@
             const netUsdProfitLoss = netProfitLoss * priceWaxUsd;
             const totalUsdVolume = totalVolume * priceWaxUsd; // Volume USD (24h)
 
-            // --- Calculs Mensuels & Annuels (Nouveau) ---
+            // --- Calculs Mensuels & Annuels ---
             const monthlyUsdVolume = totalUsdVolume * DAYS_IN_MONTH;
             const annualUsdVolume = totalUsdVolume * DAYS_IN_YEAR;
 
-
-            // --- 3. Indicateurs Stratégiques ---
+            // --- Indicateurs Stratégiques ---
             const ratioAmplification = unitsDovX / unitsCostPerToken;
 
-            // --- 4. Affichage des Résultats WAX (24h) ---
+            // --- Affichage des Résultats WAX (24h) ---
             document.getElementById('resultCost').textContent = formatWAX(totalWaxCost, 4);
             document.getElementById('resultReward').textContent = formatWAX(totalWaxReward, 4);
             document.getElementById('resultVolume').textContent = formatWAX(totalVolume, 4);
@@ -353,7 +402,7 @@
             netElement.classList.remove('text-green-400', 'text-red-400');
             netElement.classList.add(netProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
 
-            // --- 5. Affichage des Résultats USD (24h) ---
+            // --- Affichage des Résultats USD (24h) ---
             document.getElementById('resultUsdCost').textContent = formatUSD(totalUsdCost, 4);
             document.getElementById('resultUsdReward').textContent = formatUSD(totalUsdReward, 4);
             document.getElementById('resultUsdVolume').textContent = formatUSD(totalUsdVolume, 4);
@@ -363,25 +412,36 @@
             netUsdElement.classList.remove('text-green-400', 'text-red-400');
             netUsdElement.classList.add(netUsdProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
             
-            // --- 6. Affichage des Résultats USD (Mensuel & Annuel) (Nouveau) ---
+            // --- Affichage des Résultats USD (Mensuel & Annuel) ---
             document.getElementById('resultUsdVolumeMonthly').textContent = formatUSD(monthlyUsdVolume, 2);
             document.getElementById('resultUsdVolumeAnnual').textContent = formatUSD(annualUsdVolume, 2);
 
 
-            // --- 7. Affichage des Indicateurs par Division ---
+            // --- Affichage des Indicateurs par Division ---
             document.getElementById('unitsCostPerToken').textContent = formatUnits(unitsCostPerToken) + ' unités';
             document.getElementById('ratioAmplification').textContent = ratioAmplification.toFixed(4) + 'x';
         };
 
+        // Initialisation de l'affichage du slider et des valeurs min/max
+        const initializeSliderDisplay = () => {
+            const minWaxDisplay = document.getElementById('minWaxDisplay');
+            const maxWaxDisplay = document.getElementById('maxWaxDisplay');
+            
+            document.getElementById('sliderValueDisplay').textContent = formatPriceDisplay(dovxPriceSlider.value);
+            minWaxDisplay.textContent = formatPriceDisplay(dovxPriceSlider.min);
+            maxWaxDisplay.textContent = formatPriceDisplay(dovxPriceSlider.max);
+        };
+
+
         // Événements
         selector.addEventListener('change', calculate);
-        priceCostTokenInput.addEventListener('input', calculate);
-        priceDovXInput.addEventListener('input', calculate);
-        priceWaxUsdInput.addEventListener('input', calculate);
+        dovxPriceSlider.addEventListener('input', calculate); // Le slider déclenche le calcul
+        priceWaxUsdInput.addEventListener('input', calculate); // Le prix WAX/USD est toujours manuel
         numberOfAccountsInput.addEventListener('input', calculate);
 
         // Lancement initial au chargement
         window.onload = function() {
+            initializeSliderDisplay();
             calculate();
         };
 
