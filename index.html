@@ -252,7 +252,7 @@
             </div>
         </div>
         
-        <!-- Section ROI et Break-Even (NON MODIFIÉE) -->
+        <!-- Section ROI et Break-Even -->
         <div class="card p-6 rounded-xl">
             <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-lime-300 mb-6">
                 5. Analyse de l'Investissement & ROI (Basé sur le prix des packs)
@@ -297,7 +297,7 @@
         </div>
 
 
-        <!-- SECTION MISE À JOUR: Consommation Nominale des Jetons de Coût -->
+        <!-- SECTION Consommation Nominale des Jetons de Coût -->
         <div class="card p-6 rounded-xl">
              <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-indigo-300">
                 6. Consommation Détaillée des Jetons de Coût (TU)
@@ -331,7 +331,7 @@
                 </table>
             </div>
 
-            <!-- NOUVELLES LIGNES: Consommation Totale Journalière -->
+            <!-- Totaux Consommation Journalière -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-700 pt-4">
                 
                 <div class="p-4 bg-red-900/40 rounded-lg">
@@ -358,6 +358,61 @@
                         <span class="font-bold text-gray-400">Ratio d'Hyper-Amplification ($DOVX$ / Coût Unitaire TU):</span>
                         <span id="ratioAmplification" class="text-lg text-green-500 font-extrabold ml-2">--</span>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NOUVELLE SECTION 7: RÉPARTITION DES REVENUS DES PACKS -->
+        <div class="card p-6 rounded-xl">
+             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-yellow-300">
+                7. Répartition des Revenus de Vente des Packs
+            </h3>
+            
+            <p class="text-sm text-gray-400 mt-2 mb-4">
+                Distribution de l'Investissement Total ($${30\% Cash Back}, ${30\% Team}, ${30\% Market Token}, ${10\% Pub}$).
+            </p>
+
+            <!-- LIGNE 1: Totaux de l'Investissement -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 pt-4 border-t border-gray-800">
+                <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-600">
+                    <p class="text-sm result-label">Investissement Total USD</p>
+                    <p id="totalInvestmentUsdDisplay" class="text-2xl mt-1 text-lime-300 font-bold">--</p>
+                </div>
+                <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-600">
+                    <p class="text-sm result-label">Investissement Total WAX</p>
+                    <p id="totalInvestmentWaxDisplay" class="text-2xl mt-1 text-lime-300 font-bold">--</p>
+                </div>
+            </div>
+
+            <!-- LIGNE 2: Répartition Détaillée -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <!-- Cash Back (30%) -->
+                <div class="p-3 bg-blue-900/30 rounded-lg">
+                    <p class="text-sm font-bold text-blue-300">Cash Back (30%)</p>
+                    <p id="cashBackUsd" class="text-xl mt-1 text-white">--</p>
+                    <p id="cashBackWax" class="text-xs text-blue-200">--</p>
+                </div>
+
+                <!-- Team (30%) -->
+                <div class="p-3 bg-purple-900/30 rounded-lg">
+                    <p class="text-sm font-bold text-purple-300">Team (30%)</p>
+                    <p id="teamUsd" class="text-xl mt-1 text-white">--</p>
+                    <p id="teamWax" class="text-xs text-purple-200">--</p>
+                </div>
+
+                <!-- Market Token (30%) -->
+                <div class="p-3 bg-pink-900/30 rounded-lg">
+                    <p class="text-sm font-bold text-pink-300">Market Token (30%)</p>
+                    <p id="marketTokenUsd" class="text-xl mt-1 text-white">--</p>
+                    <p id="marketTokenWax" class="text-xs text-pink-200">--</p>
+                </div>
+
+                <!-- Pub (10%) -->
+                <div class="p-3 bg-amber-900/30 rounded-lg">
+                    <p class="text-sm font-bold text-amber-300">Pub (10%)</p>
+                    <p id="pubUsd" class="text-xl mt-1 text-white">--</p>
+                    <p id="pubWax" class="text-xs text-amber-200">--</p>
                 </div>
             </div>
         </div>
@@ -496,17 +551,14 @@
         const priceDovXInput = document.getElementById('priceDovX');
         const priceWaxUsdInput = document.getElementById('priceWaxUsd');
         const numberOfAccountsInput = document.getElementById('numberOfAccounts');
-        // Input pour divisions par compte
         const divisionsPerAccountInput = document.getElementById('divisionsPerAccount');
         const dovxPriceSlider = document.getElementById('dovxPriceSlider');
 
         // Éléments pour le ROI et les Packs
         const numberOfPacksInput = document.getElementById('numberOfPacks');
-        // Input pour divisions par pack
         const divisionsPerPackInput = document.getElementById('divisionsPerPack');
         const pricePerPackWaxInput = document.getElementById('pricePerPackWax');
         const pricePerPackUsdInput = document.getElementById('pricePerPackUsd'); 
-        // Affichage du total de divisions achetées
         const resultTotalDivisionsPurchasedElement = document.getElementById('resultTotalDivisionsPurchased');
         
         // NOUVEAUX ÉLÉMENTS DE RÉSULTATS POUR LE COÛT TOTAL WAX (Section 2)
@@ -516,14 +568,25 @@
 
         // Éléments de la nouvelle section 6
         const consumptionTableBody = document.getElementById('consumptionTableBody');
-        const totalUnitsConsumedBaseElement = document.getElementById('totalUnitsConsumedBase'); // Somme des 4 unitaires TU
-        const totalUnitsConsumedDailySumElement = document.getElementById('totalUnitsConsumedDailySum'); // Somme des 4 totaux journaliers
-        const totalWaxCostBaseElement = document.getElementById('totalWaxCostBase'); // Somme des 4 coûts WAX unitaires
+        const totalUnitsConsumedBaseElement = document.getElementById('totalUnitsConsumedBase'); 
+        const totalUnitsConsumedDailySumElement = document.getElementById('totalUnitsConsumedDailySum');
+        const totalWaxCostBaseElement = document.getElementById('totalWaxCostBase'); 
         const unitsDovXGeneratedElement = document.getElementById('unitsDovXGenerated');
         const ratioAmplificationElement = document.getElementById('ratioAmplification');
-        // NOUVEAUX ÉLÉMENTS
-        const totalUnitsConsumedDailyElement = document.getElementById('totalUnitsConsumedDaily'); // Coût TU total (tous jetons)
-        const totalWaxCostDailyElement = document.getElementById('totalWaxCostDaily'); // Coût WAX total (tous jetons)
+        const totalUnitsConsumedDailyElement = document.getElementById('totalUnitsConsumedDaily'); 
+        const totalWaxCostDailyElement = document.getElementById('totalWaxCostDaily'); 
+
+        // NOUVEAUX ÉLÉMENTS DE LA SECTION 7 (Répartition des Revenus)
+        const totalInvestmentUsdDisplay = document.getElementById('totalInvestmentUsdDisplay');
+        const totalInvestmentWaxDisplay = document.getElementById('totalInvestmentWaxDisplay');
+        const cashBackUsd = document.getElementById('cashBackUsd');
+        const cashBackWax = document.getElementById('cashBackWax');
+        const teamUsd = document.getElementById('teamUsd');
+        const teamWax = document.getElementById('teamWax');
+        const marketTokenUsd = document.getElementById('marketTokenUsd');
+        const marketTokenWax = document.getElementById('marketTokenWax');
+        const pubUsd = document.getElementById('pubUsd');
+        const pubWax = document.getElementById('pubWax');
 
 
         // Initialisation du sélecteur de zone - Garde l'affichage de l'unitaire en TU
@@ -545,30 +608,23 @@
             // 1. Lecture des paramètres de base
             const priceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value);
             const numberOfAccounts = Math.max(1, parseInt(numberOfAccountsInput.value) || 1); 
-            // Lecture des divisions déployées par compte
             const divisionsPerAccount = Math.max(1, parseInt(divisionsPerAccountInput.value) || 1);
             
             // Paramètres Packs/ROI
             const numberOfPacks = Math.max(0, parseInt(numberOfPacksInput.value) || 0); 
-            // Lecture des divisions par pack
             const divisionsPerPack = Math.max(0, parseInt(divisionsPerPackInput.value) || 0);
             
             // Calcul et affichage du total des divisions achetées
             const totalDivisionsPurchased = numberOfPacks * divisionsPerPack;
             resultTotalDivisionsPurchasedElement.textContent = formatUnits(totalDivisionsPurchased);
             
-            // Le prix USD est l'entrée principale
             const pricePerPackUsdInputVal = parseFrenchFloat(pricePerPackUsdInput.value);
             
-            // Calcul du prix du pack en WAX (base du ROI)
             let pricePerPackWax = 0;
             if (priceWaxUsd > 0 && !isNaN(pricePerPackUsdInputVal)) {
-                // Formule: Prix WAX = Prix USD / Taux WAX/USD
                 pricePerPackWax = pricePerPackUsdInputVal / priceWaxUsd;
             }
 
-            // Mise à jour de l'affichage du prix WAX du pack (maintenant l'affichage automatique)
-            // On formate en WAX sans décimales pour les WAX entiers (comme 1000 WAX)
             pricePerPackWaxInput.value = pricePerPackWax.toLocaleString('fr-FR', { 
                 minimumFractionDigits: 0, 
                 maximumFractionDigits: 0 
@@ -576,6 +632,8 @@
             
             // Investissement Total en WAX (base pour le ROI en WAX)
             const totalInvestmentWAX = numberOfPacks * pricePerPackWax;
+            // Investissement Total en USD (base pour la répartition des revenus)
+            const totalInvestmentUSD = numberOfPacks * pricePerPackUsdInputVal;
 
 
             // 2. Détermination des prix basés sur la réglette
@@ -588,10 +646,9 @@
             priceCostTokenInput.value = newPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
             document.getElementById('sliderValueDisplay').textContent = formatPriceDisplay(sliderValue);
 
-            // Multiplicateur total basé sur les comptes et les divisions PAR COMPTE
             const totalMultiplier = numberOfAccounts * divisionsPerAccount;
 
-            if (!selectedZone || isNaN(newPriceDovX) || isNaN(newPriceCostToken) || isNaN(priceWaxUsd) || isNaN(pricePerPackWax)) {
+            if (!selectedZone || isNaN(newPriceDovX) || isNaN(newPriceCostToken) || isNaN(priceWaxUsd) || isNaN(pricePerPackWax) || isNaN(totalInvestmentUSD)) {
                 // Réinitialiser l'affichage si les données sont invalides
                 document.querySelectorAll('.result-value').forEach(el => el.textContent = '--');
                 resultTotalDivisionsPurchasedElement.textContent = '--';
@@ -604,38 +661,47 @@
                 totalUnitsConsumedDailyElement.textContent = '--';
                 totalWaxCostDailyElement.textContent = '--';
                 
-                // Réinitialiser les nouveaux éléments de coût
                 totalWaxCostValueElement.textContent = '--';
                 unitCostWaxValueElement.textContent = `"Unitaire TU: --"`;
+                
+                // Réinitialisation de la section 7
+                totalInvestmentUsdDisplay.textContent = '--';
+                totalInvestmentWaxDisplay.textContent = '--';
+                cashBackUsd.textContent = '--';
+                cashBackWax.textContent = '--';
+                teamUsd.textContent = '--';
+                teamWax.textContent = '--';
+                marketTokenUsd.textContent = '--';
+                marketTokenWax.textContent = '--';
+                pubUsd.textContent = '--';
+                pubWax.textContent = '--';
+
                 return;
             }
 
             // --- Calculs pour UNE SEULE division (base) ---
-            // Coût unitaire de chaque jeton (total_cost / 4)
             const unitsCostPerTokenBase = selectedZone.totalTuCost / 4;
             const unitsDovX = selectedZone.dovxReward;
 
-            const singleDivisionWaxCost = selectedZone.totalTuCost * newPriceCostToken; // Utilisation du nouveau prix TU
-            const singleDivisionWaxReward = unitsDovX * newPriceDovX; // Utilisation du nouveau prix DOVX
+            const singleDivisionWaxCost = selectedZone.totalTuCost * newPriceCostToken; 
+            const singleDivisionWaxReward = unitsDovX * newPriceDovX; 
             
             // --- Application au Volume Total (WAX) ---
             const totalWaxCost = singleDivisionWaxCost * totalMultiplier;
             const totalWaxReward = singleDivisionWaxReward * totalMultiplier;
             
-            const netProfitLoss = totalWaxReward - totalWaxCost; // Marge Nette Journalière (WAX)
-            const totalVolume = totalWaxCost + totalWaxReward; // Volume WAX (24h)
+            const netProfitLoss = totalWaxReward - totalWaxCost; 
+            const totalVolume = totalWaxCost + totalWaxReward; 
 
             // --- Conversion USD ---
             const totalUsdCost = totalWaxCost * priceWaxUsd;
             const totalUsdReward = totalWaxReward * priceWaxUsd;
-            const netUsdProfitLoss = netProfitLoss * priceWaxUsd; // Marge Nette Journalière (USD)
-            const totalUsdVolume = totalVolume * priceWaxUsd; // Volume USD (24h)
+            const netUsdProfitLoss = netProfitLoss * priceWaxUsd; 
+            const totalUsdVolume = totalVolume * priceWaxUsd; 
 
             // --- Calculs Mensuels & Annuels ---
             const monthlyUsdVolume = totalUsdVolume * DAYS_IN_MONTH;
             const annualUsdVolume = totalUsdVolume * DAYS_IN_YEAR;
-            
-            // Calculs Marge Nette Mensuelle et Annuelle
             const monthlyNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_MONTH;
             const annualNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_YEAR;
             
@@ -646,7 +712,6 @@
             let roiMonthlyPercent = 0;
             
             if (totalInvestmentWAX > 0) {
-                // ROI Journalier et Mensuel en pourcentage (basé sur la marge nette WAX)
                 roiDailyPercent = netProfitLoss / totalInvestmentWAX;
                 roiMonthlyPercent = roiDailyPercent * DAYS_IN_MONTH;
 
@@ -673,11 +738,25 @@
             const totalTuUnitsConsumedDaily = selectedZone.totalTuCost * totalMultiplier;
             const totalWaxCostDailyCalculated = totalTuUnitsConsumedDaily * newPriceCostToken;
 
+            // --- CALCULS DE LA SECTION 7 (Répartition des Ventes) ---
+            // Pourcentages: Cash Back (30%), Team (30%), Market Token (30%), Pub (10%)
+            const CASH_BACK_PERCENT = 0.30;
+            const TEAM_PERCENT = 0.30;
+            const MARKET_TOKEN_PERCENT = 0.30;
+            const PUB_PERCENT = 0.10;
+
+            const cbUsd = totalInvestmentUSD * CASH_BACK_PERCENT;
+            const cbWax = totalInvestmentWAX * CASH_BACK_PERCENT;
+            const tmUsd = totalInvestmentUSD * TEAM_PERCENT;
+            const tmWax = totalInvestmentWAX * TEAM_PERCENT;
+            const mtUsd = totalInvestmentUSD * MARKET_TOKEN_PERCENT;
+            const mtWax = totalInvestmentWAX * MARKET_TOKEN_PERCENT;
+            const pbUsd = totalInvestmentUSD * PUB_PERCENT;
+            const pbWax = totalInvestmentWAX * PUB_PERCENT;
+
 
             // --- Affichage des Résultats WAX (24h) ---
-            // MISE À JOUR pour afficher le total et l'unitaire WAX TU
             totalWaxCostValueElement.textContent = formatWAX(totalWaxCost, 4);
-            // newPriceCostToken est le coût WAX par TU, affiché avec 8 décimales
             unitCostWaxValueElement.textContent = `"Unitaire TU: ${formatWAX(newPriceCostToken, 8)}"`; 
 
             document.getElementById('resultReward').textContent = formatWAX(totalWaxReward, 4);
@@ -702,13 +781,11 @@
             document.getElementById('resultUsdVolumeMonthly').textContent = formatUSD(monthlyUsdVolume, 2);
             document.getElementById('resultUsdVolumeAnnual').textContent = formatUSD(annualUsdVolume, 2);
             
-            // Affichage de la Marge Nette Mensuelle
             const netUsdMonthlyElement = document.getElementById('resultNetUsdMonthly');
             netUsdMonthlyElement.textContent = formatUSD(monthlyNetUsdProfitLoss, 2);
             netUsdMonthlyElement.classList.remove('text-green-400', 'text-red-400');
             netUsdMonthlyElement.classList.add(monthlyNetUsdProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
             
-            // Affichage de la Marge Nette Annuelle
             const netUsdAnnualElement = document.getElementById('resultNetUsdAnnual');
             netUsdAnnualElement.textContent = formatUSD(annualNetUsdProfitLoss, 2);
             netUsdAnnualElement.classList.remove('text-green-400', 'text-red-400');
@@ -717,7 +794,6 @@
             // --- Affichage des Résultats ROI ---
             document.getElementById('resultTotalInvestment').textContent = formatWAX(totalInvestmentWAX, 0);
 
-            // NOUVEAU: Affichage du ROI en Pourcentage
             const roiDailyPercentElement = document.getElementById('resultRoiDailyPercent');
             roiDailyPercentElement.textContent = formatPercent(roiDailyPercent, 4);
             roiDailyPercentElement.classList.remove('text-green-400', 'text-red-400');
@@ -727,7 +803,6 @@
             roiMonthlyPercentElement.textContent = formatPercent(roiMonthlyPercent, 2);
             roiMonthlyPercentElement.classList.remove('text-green-400', 'text-red-400');
             roiMonthlyPercentElement.classList.add(roiMonthlyPercent >= 0 ? 'text-green-400' : 'text-red-400');
-
 
             const roiDaysElement = document.getElementById('resultRoiDays');
             roiDaysElement.textContent = (roiDays === Infinity) ? '--' : formatUnits(roiDays);
@@ -741,22 +816,19 @@
             } else if (netProfitLoss < 0) {
                 roiStatusElement.classList.add('text-red-400');
             } else if (totalInvestmentWAX > 0) {
-                 roiStatusElement.classList.add('text-lime-400'); // Neutral for zero margin
+                 roiStatusElement.classList.add('text-lime-400'); 
             } else {
-                 roiStatusElement.classList.add('text-gray-400'); // N/A
+                 roiStatusElement.classList.add('text-gray-400'); 
             }
 
             // --- Mise à jour de la Section 6: Consommation Nominale des Jetons de Coût ---
-            
             let html = '';
             let totalWaxCostBase = 0;
             let totalUnitsConsumedDailySum = 0;
 
-            // Chaque jeton de coût a le même coût unitaire en TU (unitsCostPerTokenBase)
-            // et le même prix en WAX (newPriceCostToken)
             for (const token of COST_TOKENS) {
                 const waxCostPerToken = unitsCostPerTokenBase * newPriceCostToken;
-                const totalDailyUnits = unitsCostPerTokenBase * totalMultiplier; // C'EST LA VALEUR DEMANDÉE
+                const totalDailyUnits = unitsCostPerTokenBase * totalMultiplier; 
 
                 totalWaxCostBase += waxCostPerToken;
                 totalUnitsConsumedDailySum += totalDailyUnits;
@@ -773,18 +845,32 @@
 
             consumptionTableBody.innerHTML = html;
             
-            // Mise à jour des totaux unitaires (base) et journaliers (totaux)
             totalUnitsConsumedBaseElement.textContent = formatUnits(selectedZone.totalTuCost) + ' unités';
-            totalUnitsConsumedDailySumElement.textContent = formatUnits(totalUnitsConsumedDailySum) + ' unités'; // Total journalier détaillé
+            totalUnitsConsumedDailySumElement.textContent = formatUnits(totalUnitsConsumedDailySum) + ' unités'; 
             totalWaxCostBaseElement.textContent = formatWAX(totalWaxCostBase, 6);
             
-            // Mise à jour des totaux journaliers (résumé)
             totalUnitsConsumedDailyElement.textContent = formatUnits(totalTuUnitsConsumedDaily) + ' unités';
             totalWaxCostDailyElement.textContent = formatWAX(totalWaxCostDailyCalculated, 4);
 
-            // Mise à jour des indicateurs par division (bas de la section 6)
             unitsDovXGeneratedElement.textContent = formatUnits(unitsDovX) + ' unités';
             ratioAmplificationElement.textContent = ratioAmplification.toFixed(4) + 'x';
+            
+            // --- Affichage de la Section 7: Répartition des Ventes ---
+            totalInvestmentUsdDisplay.textContent = formatUSD(totalInvestmentUSD, 2);
+            totalInvestmentWaxDisplay.textContent = formatWAX(totalInvestmentWAX, 0);
+            
+            cashBackUsd.textContent = formatUSD(cbUsd, 2);
+            cashBackWax.textContent = formatWAX(cbWax, 0);
+
+            teamUsd.textContent = formatUSD(tmUsd, 2);
+            teamWax.textContent = formatWAX(tmWax, 0);
+
+            marketTokenUsd.textContent = formatUSD(mtUsd, 2);
+            marketTokenWax.textContent = formatWAX(mtWax, 0);
+
+            pubUsd.textContent = formatUSD(pbUsd, 2);
+            pubWax.textContent = formatWAX(pbWax, 0);
+
         };
 
         // Initialisation de l'affichage du slider et des valeurs min/max
@@ -793,7 +879,6 @@
             const maxWaxDisplay = document.getElementById('maxWaxDisplay');
             const sliderValueDisplay = document.getElementById('sliderValueDisplay');
             
-            // Utilisation des vérifications de nullité pour garantir la robustesse
             if (sliderValueDisplay) {
                  sliderValueDisplay.textContent = formatPriceDisplay(dovxPriceSlider.value);
             }
@@ -808,7 +893,6 @@
 
 
         // Événements
-        // Tous les champs d'entrée qui affectent les calculs déclenchent la fonction 'calculate'
         selector.addEventListener('change', calculate);
         dovxPriceSlider.addEventListener('input', calculate); 
         priceWaxUsdInput.addEventListener('input', calculate); 
