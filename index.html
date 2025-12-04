@@ -153,10 +153,13 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
-                <!-- Coût Total WAX (Demande) -->
+                <!-- Coût Total WAX (Demande) - MISE À JOUR POUR LE COÛT UNITAIRE WAX TU -->
                 <div class="p-3 bg-red-900/30 rounded-lg">
                     <p class="text-sm result-label">Coût Total (Demande)</p>
-                    <p id="resultCost" class="text-2xl mt-1 text-red-400 result-value">--</p>
+                    <p id="resultCost" class="text-2xl mt-1 text-red-400 result-value flex flex-col items-start">
+                        <span id="totalWaxCostValue">--</span>
+                        <span id="unitCostWaxValue" class="text-sm font-normal text-gray-400 mt-1">"Unitaire TU: --"</span>
+                    </p>
                 </div>
 
                 <!-- Récompense Totale WAX (Offre) -->
@@ -249,7 +252,7 @@
             </div>
         </div>
         
-        <!-- Section ROI et Break-Even (MODIFIÉE) -->
+        <!-- Section ROI et Break-Even (NON MODIFIÉE) -->
         <div class="card p-6 rounded-xl">
             <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-lime-300 mb-6">
                 5. Analyse de l'Investissement & ROI (Basé sur le prix des packs)
@@ -294,17 +297,67 @@
         </div>
 
 
-        <!-- Indicateurs pour une seule division (Non multipliés) -->
-        <div class="mt-8 pt-4 border-t border-gray-700 card p-6 rounded-xl">
-            <h3 class="text-lg font-semibold text-yellow-400">6. Indicateurs par Division (Non multipliés)</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                <div class="text-sm">
-                    <span class="font-bold text-gray-400">Coût d'un Jeton de Coût (Unités TU):</span>
-                    <span id="unitsCostPerToken" class="text-white ml-2">--</span>
+        <!-- SECTION MISE À JOUR: Consommation Nominale des Jetons de Coût -->
+        <div class="card p-6 rounded-xl">
+             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-indigo-300">
+                6. Consommation Détaillée des Jetons de Coût (TU)
+            </h3>
+            
+            <p class="text-sm text-gray-400 mt-2 mb-4">
+                Détail de la consommation unitaire (par division) et projection totale journalière (pour **toutes** les divisions).
+            </p>
+
+            <div class="overflow-x-auto mb-6">
+                <table class="min-w-full divide-y divide-gray-700 text-sm">
+                    <thead>
+                        <tr class="text-left text-gray-400 bg-gray-800/50">
+                            <th class="p-3 font-medium">Jeton de Coût</th>
+                            <th class="p-3 font-medium text-right">Unités TU (par 1 Division)</th>
+                            <th class="p-3 font-medium text-right text-red-300">Total TU (Journalier)</th>
+                            <th class="p-3 font-medium text-right">Coût WAX (par 1 Division)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800" id="consumptionTableBody">
+                        <!-- Les lignes de données seront insérées ici par JS -->
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t border-yellow-500/50 bg-gray-800 font-bold">
+                            <td class="p-3 text-yellow-300">TOTAL (Toutes Divisions/24h)</td>
+                            <td class="p-3 text-right text-yellow-300" id="totalUnitsConsumedBase">--</td>
+                            <td class="p-3 text-right text-yellow-300" id="totalUnitsConsumedDailySum">--</td>
+                            <td class="p-3 text-right text-yellow-300" id="totalWaxCostBase">--</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- NOUVELLES LIGNES: Consommation Totale Journalière -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-700 pt-4">
+                
+                <div class="p-4 bg-red-900/40 rounded-lg">
+                    <p class="text-sm font-bold text-gray-300">Consommation Totale TU (Journalière)</p>
+                    <p id="totalUnitsConsumedDaily" class="text-2xl mt-1 text-red-300 font-extrabold">--</p>
+                    <p class="text-xs text-gray-400 mt-1">Total TU requis pour tous les déploiements.</p>
                 </div>
-                <div class="text-sm">
-                    <span class="font-bold text-gray-400">Ratio d'Hyper-Amplification ($DOVX$ / Coût Jeton):</span>
-                    <span id="ratioAmplification" class="text-lg text-green-500 font-extrabold ml-2">--</span>
+
+                 <div class="p-4 bg-red-900/40 rounded-lg">
+                    <p class="text-sm font-bold text-gray-300">Coût Total WAX (Journalier)</p>
+                    <p id="totalWaxCostDaily" class="text-2xl mt-1 text-red-300 font-extrabold">--</p>
+                    <p class="text-xs text-gray-400 mt-1">Coût WAX équivalent du besoin en TU.</p>
+                </div>
+            </div>
+
+            <!-- Indicateurs pour une seule division (Non multipliés) -->
+            <div class="mt-6 pt-4 border-t border-gray-800">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                    <div class="text-sm">
+                        <span class="font-bold text-gray-400">Unités DOVX générées (par Division):</span>
+                        <span id="unitsDovXGenerated" class="text-white ml-2">--</span>
+                    </div>
+                    <div class="text-sm">
+                        <span class="font-bold text-gray-400">Ratio d'Hyper-Amplification ($DOVX$ / Coût Unitaire TU):</span>
+                        <span id="ratioAmplification" class="text-lg text-green-500 font-extrabold ml-2">--</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -327,7 +380,8 @@
         // Constantes de temps
         const DAYS_IN_MONTH = 30;
         const DAYS_IN_YEAR = 365;
-        // NOTE: La constante DIVISIONS_PER_ACCOUNT a été remplacée par l'input divisionsPerAccount pour plus de flexibilité.
+        // Nom des jetons de coût pour l'affichage détaillé
+        const COST_TOKENS = ["DOV-H", "DOV-R", "DOV-S", "DOV-F"];
 
         // --- Fonctions de formatage ---
 
@@ -338,7 +392,7 @@
          * @returns {string} La chaîne formatée en WAX.
          */
         const formatWAX = (value, decimales = 6) => {
-            if (isNaN(value)) return '--';
+            if (isNaN(value) || !isFinite(value)) return '--';
             return value.toLocaleString('fr-FR', {
                 minimumFractionDigits: decimales,
                 maximumFractionDigits: decimales
@@ -352,7 +406,7 @@
          * @returns {string} La chaîne formatée en USD.
          */
         const formatUSD = (value, decimales = 4) => {
-            if (isNaN(value)) return '--';
+            if (isNaN(value) || !isFinite(value)) return '--';
             return value.toLocaleString('fr-FR', {
                 minimumFractionDigits: decimales,
                 maximumFractionDigits: decimales,
@@ -412,25 +466,26 @@
         // --------------------------------------------------------------------------
 
 
-        // Définition des données de base de l'économie (Unités divisées par 1000 pour que beach1 = 1160 par jeton)
+        // Définition des données de base de l'économie (totalTuCost est le coût COMBINÉ des 4 jetons)
         // Les valeurs ici représentent le coût/récompense pour UNE SEULE DIVISION/DÉPLOIEMENT.
+        // totalTuCost est le total, qui sera divisé par 4 pour le coût unitaire de chaque jeton.
         const ZONE_DATA = [
-            { name: "beach1", totalTuCost: 4640, dovxReward: 400 },
-            { name: "beach2", totalTuCost: 27872, dovxReward: 2405 },
-            { name: "beach3", totalTuCost: 35200, dovxReward: 3037 },
-            { name: "bunker", totalTuCost: 44480, dovxReward: 3838 },
-            { name: "forest1", totalTuCost: 56096, dovxReward: 4840 },
-            { name: "forest2", totalTuCost: 70816, dovxReward: 6110 },
-            { name: "forest3", totalTuCost: 89408, dovxReward: 7714 },
-            { name: "camp", totalTuCost: 112880, dovxReward: 9739 },
-            { name: "hill1", totalTuCost: 148208, dovxReward: 12788 },
-            { name: "hill2", totalTuCost: 194608, dovxReward: 16791 },
-            { name: "hill3", totalTuCost: 258064, dovxReward: 22266 },
-            { name: "radar", totalTuCost: 338848, dovxReward: 29236 },
-            { name: "plain1", totalTuCost: 397536, dovxReward: 34300 },
-            { name: "plain2", totalTuCost: 502832, dovxReward: 43385 },
-            { name: "plain3", totalTuCost: 604656, dovxReward: 52171 },
-            { name: "HQ", totalTuCost: 752000, dovxReward: 64884 },
+            { name: "beach1", totalTuCost: 4640, dovxReward: 400 }, // 1160 * 4
+            { name: "beach2", totalTuCost: 27872, dovxReward: 2405 }, // 6968 * 4
+            { name: "beach3", totalTuCost: 35200, dovxReward: 3037 }, // 8800 * 4
+            { name: "bunker", totalTuCost: 44480, dovxReward: 3838 }, // 11120 * 4
+            { name: "forest1", totalTuCost: 56096, dovxReward: 4840 }, // 14024 * 4
+            { name: "forest2", totalTuCost: 70816, dovxReward: 6110 }, // 17704 * 4
+            { name: "forest3", totalTuCost: 89408, dovxReward: 7714 }, // 22352 * 4
+            { name: "camp", totalTuCost: 112880, dovxReward: 9739 }, // 28220 * 4
+            { name: "hill1", totalTuCost: 148208, dovxReward: 12788 }, // 37052 * 4
+            { name: "hill2", totalTuCost: 194608, dovxReward: 16791 }, // 48652 * 4
+            { name: "hill3", totalTuCost: 258064, dovxReward: 22266 }, // 64516 * 4
+            { name: "radar", totalTuCost: 338848, dovxReward: 29236 }, // 84712 * 4
+            { name: "plain1", totalTuCost: 397536, dovxReward: 34300 }, // 99384 * 4
+            { name: "plain2", totalTuCost: 502832, dovxReward: 43385 }, // 125708 * 4
+            { name: "plain3", totalTuCost: 604656, dovxReward: 52171 }, // 151164 * 4
+            { name: "HQ", totalTuCost: 752000, dovxReward: 64884 }, // 188000 * 4
             // Nouvelle zone de stacking (Exemple de valeurs pour le calcul)
             { name: "STAKING", totalTuCost: 650000, dovxReward: 50000 },
         ];
@@ -453,14 +508,32 @@
         const pricePerPackUsdInput = document.getElementById('pricePerPackUsd'); 
         // Affichage du total de divisions achetées
         const resultTotalDivisionsPurchasedElement = document.getElementById('resultTotalDivisionsPurchased');
+        
+        // NOUVEAUX ÉLÉMENTS DE RÉSULTATS POUR LE COÛT TOTAL WAX (Section 2)
+        const totalWaxCostValueElement = document.getElementById('totalWaxCostValue');
+        const unitCostWaxValueElement = document.getElementById('unitCostWaxValue');
 
 
-        // Initialisation du sélecteur de zone
+        // Éléments de la nouvelle section 6
+        const consumptionTableBody = document.getElementById('consumptionTableBody');
+        const totalUnitsConsumedBaseElement = document.getElementById('totalUnitsConsumedBase'); // Somme des 4 unitaires TU
+        const totalUnitsConsumedDailySumElement = document.getElementById('totalUnitsConsumedDailySum'); // Somme des 4 totaux journaliers
+        const totalWaxCostBaseElement = document.getElementById('totalWaxCostBase'); // Somme des 4 coûts WAX unitaires
+        const unitsDovXGeneratedElement = document.getElementById('unitsDovXGenerated');
+        const ratioAmplificationElement = document.getElementById('ratioAmplification');
+        // NOUVEAUX ÉLÉMENTS
+        const totalUnitsConsumedDailyElement = document.getElementById('totalUnitsConsumedDaily'); // Coût TU total (tous jetons)
+        const totalWaxCostDailyElement = document.getElementById('totalWaxCostDaily'); // Coût WAX total (tous jetons)
+
+
+        // Initialisation du sélecteur de zone - Garde l'affichage de l'unitaire en TU
         ZONE_DATA.forEach((zone, index) => {
+            const unitsCostPerTokenBase = zone.totalTuCost / 4; // Coût unitaire pour un seul jeton TU (en unités TU)
             const option = document.createElement('option');
             option.value = index;
             // Coût total par division/déploiement (4 jetons)
-            option.textContent = `${zone.name.toUpperCase()} (Coût Total: ${formatUnits(zone.totalTuCost)} TU)`;
+            // Ajout de la consommation unitaire (en unités TU) entre guillemets
+            option.textContent = `${zone.name.toUpperCase()} (Coût Total: ${formatUnits(zone.totalTuCost)} TU - "Unitaire: ${formatUnits(unitsCostPerTokenBase)}" TU)`;
             selector.appendChild(option);
         });
 
@@ -501,8 +574,6 @@
                 maximumFractionDigits: 0 
             }); 
             
-            const pricePerPackUsd = pricePerPackUsdInputVal; // C'est l'input direct USD
-
             // Investissement Total en WAX (base pour le ROI en WAX)
             const totalInvestmentWAX = numberOfPacks * pricePerPackWax;
 
@@ -524,10 +595,23 @@
                 // Réinitialiser l'affichage si les données sont invalides
                 document.querySelectorAll('.result-value').forEach(el => el.textContent = '--');
                 resultTotalDivisionsPurchasedElement.textContent = '--';
+                consumptionTableBody.innerHTML = '';
+                totalUnitsConsumedBaseElement.textContent = '--';
+                totalUnitsConsumedDailySumElement.textContent = '--';
+                totalWaxCostBaseElement.textContent = '--';
+                unitsDovXGeneratedElement.textContent = '--';
+                ratioAmplificationElement.textContent = '--';
+                totalUnitsConsumedDailyElement.textContent = '--';
+                totalWaxCostDailyElement.textContent = '--';
+                
+                // Réinitialiser les nouveaux éléments de coût
+                totalWaxCostValueElement.textContent = '--';
+                unitCostWaxValueElement.textContent = `"Unitaire TU: --"`;
                 return;
             }
 
             // --- Calculs pour UNE SEULE division (base) ---
+            // Coût unitaire de chaque jeton (total_cost / 4)
             const unitsCostPerTokenBase = selectedZone.totalTuCost / 4;
             const unitsDovX = selectedZone.dovxReward;
 
@@ -584,9 +668,18 @@
 
             // --- Indicateurs Stratégiques ---
             const ratioAmplification = unitsDovX / unitsCostPerTokenBase;
+            
+            // --- NOUVEAUX CALCULS TU TOTAUX ---
+            const totalTuUnitsConsumedDaily = selectedZone.totalTuCost * totalMultiplier;
+            const totalWaxCostDailyCalculated = totalTuUnitsConsumedDaily * newPriceCostToken;
+
 
             // --- Affichage des Résultats WAX (24h) ---
-            document.getElementById('resultCost').textContent = formatWAX(totalWaxCost, 4);
+            // MISE À JOUR pour afficher le total et l'unitaire WAX TU
+            totalWaxCostValueElement.textContent = formatWAX(totalWaxCost, 4);
+            // newPriceCostToken est le coût WAX par TU, affiché avec 8 décimales
+            unitCostWaxValueElement.textContent = `"Unitaire TU: ${formatWAX(newPriceCostToken, 8)}"`; 
+
             document.getElementById('resultReward').textContent = formatWAX(totalWaxReward, 4);
             document.getElementById('resultVolume').textContent = formatWAX(totalVolume, 4);
             
@@ -653,9 +746,45 @@
                  roiStatusElement.classList.add('text-gray-400'); // N/A
             }
 
-            // --- Affichage des Indicateurs par Division ---
-            document.getElementById('unitsCostPerToken').textContent = formatUnits(unitsCostPerTokenBase) + ' unités';
-            document.getElementById('ratioAmplification').textContent = ratioAmplification.toFixed(4) + 'x';
+            // --- Mise à jour de la Section 6: Consommation Nominale des Jetons de Coût ---
+            
+            let html = '';
+            let totalWaxCostBase = 0;
+            let totalUnitsConsumedDailySum = 0;
+
+            // Chaque jeton de coût a le même coût unitaire en TU (unitsCostPerTokenBase)
+            // et le même prix en WAX (newPriceCostToken)
+            for (const token of COST_TOKENS) {
+                const waxCostPerToken = unitsCostPerTokenBase * newPriceCostToken;
+                const totalDailyUnits = unitsCostPerTokenBase * totalMultiplier; // C'EST LA VALEUR DEMANDÉE
+
+                totalWaxCostBase += waxCostPerToken;
+                totalUnitsConsumedDailySum += totalDailyUnits;
+
+                html += `
+                    <tr class="hover:bg-gray-800/60">
+                        <td class="p-3 font-semibold text-red-300">${token}</td>
+                        <td class="p-3 text-right">${formatUnits(unitsCostPerTokenBase)} unités</td>
+                        <td class="p-3 text-right text-red-300 font-bold">${formatUnits(totalDailyUnits)} unités</td>
+                        <td class="p-3 text-right text-red-400">${formatWAX(waxCostPerToken, 6)}</td>
+                    </tr>
+                `;
+            }
+
+            consumptionTableBody.innerHTML = html;
+            
+            // Mise à jour des totaux unitaires (base) et journaliers (totaux)
+            totalUnitsConsumedBaseElement.textContent = formatUnits(selectedZone.totalTuCost) + ' unités';
+            totalUnitsConsumedDailySumElement.textContent = formatUnits(totalUnitsConsumedDailySum) + ' unités'; // Total journalier détaillé
+            totalWaxCostBaseElement.textContent = formatWAX(totalWaxCostBase, 6);
+            
+            // Mise à jour des totaux journaliers (résumé)
+            totalUnitsConsumedDailyElement.textContent = formatUnits(totalTuUnitsConsumedDaily) + ' unités';
+            totalWaxCostDailyElement.textContent = formatWAX(totalWaxCostDailyCalculated, 4);
+
+            // Mise à jour des indicateurs par division (bas de la section 6)
+            unitsDovXGeneratedElement.textContent = formatUnits(unitsDovX) + ' unités';
+            ratioAmplificationElement.textContent = ratioAmplification.toFixed(4) + 'x';
         };
 
         // Initialisation de l'affichage du slider et des valeurs min/max
