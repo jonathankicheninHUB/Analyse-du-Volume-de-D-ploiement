@@ -571,15 +571,15 @@
                     <select id="buildingTypeFilter" class="bg-gray-800 border border-gray-600 text-xs rounded p-1 text-orange-200 focus:outline-none focus:border-orange-500">
                         <option value="ALL">Tous les Bâtiments</option>
                         <option value="DOV-F">Fuel Refinery (DOV-F)</option>
-                        <option value="DOV-H">Ammunition Factory (DOV-H)</option>
-                        <option value="DOV-R">Ration Factory (DOV-R)</option>
-                        <option value="DOV-S">Component Factory (DOV-S)</option>
+                        <option value="DOV-H">Health Factory (DOV-H)</option>
+                        <option value="DOV-R">Repair Factory (DOV-R)</option>
+                        <option value="DOV-S">Supply Factory (DOV-S)</option>
                     </select>
                 </div>
             </h3>
             
             <p class="text-sm text-gray-400 mt-2 mb-4">
-                Calculez le rendement (ROI) de vos bâtiments de production de TU (Fuel, Ammo, Ration, Component).
+                Calculez le rendement (ROI) de vos bâtiments de production de TU (Fuel, Health, Repair, Supply).
                 <br><span class="text-xs text-orange-300/70">Données basées sur les coûts standards (Communs à Suprêmes).</span>
             </p>
 
@@ -734,9 +734,9 @@
         // 2. Définition des types de bâtiments
         const BUILDING_TYPES = [
             { name: "Fuel Refinery", type: "DOV-F" },
-            { name: "Ammunition Factory", type: "DOV-H" },
-            { name: "Ration Factory", type: "DOV-R" },
-            { name: "Component Factory", type: "DOV-S" }
+            { name: "Health Factory", type: "DOV-H" },
+            { name: "Repair Factory", type: "DOV-R" },
+            { name: "Supply Factory", type: "DOV-S" }
         ];
 
         // 3. Génération de la liste complète (17 tiers * 4 types = 68 items)
@@ -1171,9 +1171,9 @@
                     // correspondant aux noms dans BUILDING_DATA
                     const mockAssets = [
                         { name: "L2 Fuel Refinery", qty: 2 },
-                        { name: "L1 Ammunition Factory", qty: 4 },
-                        { name: "L3 Ration Factory", qty: 1 },
-                        { name: "L4 Component Factory", qty: 1 }
+                        { name: "L1 Health Factory", qty: 4 },
+                        { name: "L3 Repair Factory", qty: 1 },
+                        { name: "L4 Supply Factory", qty: 1 }
                     ];
                     resolve(mockAssets);
                 }, 1000); // 1 sec de délai pour faire "vrai"
