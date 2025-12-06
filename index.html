@@ -64,6 +64,17 @@
         .scanning .scan-overlay {
             display: block;
         }
+        /* Style des réglettes */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px; 
+            height: 16px;
+            border-radius: 50%;
+            background: #eab308; /* Yellow/Amber color */
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(234, 179, 8, 0.7);
+            margin-top: -7px; /* Correction d'alignement pour Chrome */
+        }
     </style>
 </head>
 <body class="text-white p-4 sm:p-8 min-h-screen flex justify-center items-start">
@@ -71,7 +82,7 @@
     <div id="app" class="w-full max-w-5xl space-y-8 mt-10">
 
         <h1 class="text-3xl font-bold text-center text-teal-400 mb-6">
-            Analyse du Volume de Déploiement Multi-Comptes <span class="text-yellow-400">(Live WAX)</span>
+            Analyse du Volume de Déploiement Multi-Comptes <span class="text-yellow-400">(Simulateur Manuel)</span>
         </h1>
 
         <!-- Section des Paramètres d'Entrée -->
@@ -102,7 +113,7 @@
                     </select>
                 </div>
                 
-                <!-- Prix WAX/USD (AVEC BOUTON LIVE) -->
+                <!-- Prix WAX/USD (AVEC BOUTON LIVE COINGECKO) -->
                 <div>
                     <label for="priceWaxUsd" class="block text-sm font-medium result-label mb-1">Prix d'un WAX en USD ($)</label>
                     <div class="flex space-x-2">
@@ -151,34 +162,25 @@
                 </div>
             </div>
             
-            <!-- Contrôle du prix des tokens via slider (Réglette DOVX) -->
-            <div class="border-t border-gray-800 pt-4">
-                <label class="block text-sm font-medium result-label mb-2 text-teal-300">
-                    Ajuster le Prix du $DOVX$ (Le coût $TU$ suit le même ratio)
-                </label>
-                <div class="relative pt-2">
-                    <!-- Slider: 200 à 200000 pour une plage de 0.00200000 à 2.00000000 WAX -->
-                    <input type="range" id="dovxPriceSlider" min="200" max="200000" value="529" step="1" 
-                           class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer transition duration-150 ease-in-out" 
-                           oninput="document.getElementById('sliderValueDisplay').textContent=formatPriceDisplay(this.value)">
-                    <p class="mt-2 text-sm text-gray-400 flex justify-between">
-                        <span>Min WAX: <span id="minWaxDisplay" class="text-white">--</span></span>
-                        <span class="text-yellow-400 font-bold">Prix actuel du $DOVX$: <span id="sliderValueDisplay">--</span> WAX</span>
-                        <span>Max WAX: <span id="maxWaxDisplay" class="text-white">--</span></span>
-                    </p>
+            <!-- NOUVEAU: Entrée Manuelle des Prix des Jetons (RÉGLETTE UNIQUE DOVX) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 border-t border-gray-800 pt-4">
+                
+                <!-- PRIX DOVX/WAX (Contrôle Primaire) -->
+                <div class="lg:col-span-2 p-3 bg-gray-900/50 rounded-lg">
+                    <label for="priceDovXManual" class="block text-sm font-medium text-green-400 mb-2">1. Prix d'un DOVX en WAX (Récompense)</label>
+                    <!-- VALEUR INITIALE BASÉE SUR LA RÉFÉRENCE UTILISATEUR: 0.00528552 WAX -->
+                    <input type="text" id="priceDovXManual" value="0,00528552" class="input-style block w-full p-2.5 rounded-lg text-green-400 font-bold text-lg" inputmode="decimal" step="0.00000001">
+                    <!-- MAX MONTÉ À 1.00 WAX -->
+                    <input type="range" id="dovxPriceSlider" min="0.00000000" max="1.00000000" step="0.00000001" value="0.00528552" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg mt-3">
+                    <p class="text-xs text-gray-400 mt-1">Plage: 0 WAX à 1.00 WAX (8 décimales) - Ajuster la réglette</p>
                 </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
-                <!-- Prix du Jeton de Récompense (Affichage) -->
-                <div>
-                    <label for="priceDovX" class="block text-sm font-medium result-label">Prix WAX du Jeton de Récompense (DOVX) [Automatique]</label>
-                    <input type="text" id="priceDovX" value="0,00528552" readonly class="input-style mt-1 block w-full p-2.5 rounded-lg text-green-400" title="Contrôlé par la réglette" inputmode="decimal">
-                </div>
-                <!-- Prix des Jetons de Coût (Affichage) -->
-                <div>
-                    <label for="priceCostToken" class="block text-sm font-medium result-label">Prix WAX des Jetons de Coût (TU) [Automatique]</label>
-                    <input type="text" id="priceCostToken" value="0,00045262" readonly class="input-style mt-1 block w-full p-2.5 rounded-lg text-red-400" title="Ajusté automatiquement par ratio" inputmode="decimal">
+                
+                <!-- PRIX TU/WAX (Calculé par Ratio) -->
+                <div class="p-3 bg-gray-900/50 rounded-lg border-l-4 border-red-500/50">
+                    <label for="priceCostTokenCalculated" class="block text-sm font-medium text-red-400 mb-2">2. Prix d'un TU en WAX (Ratio Calculé)</label>
+                    <!-- VALEUR INITIALE BASÉE SUR LA RÉFÉRENCE UTILISATEUR: 0.00045262 WAX -->
+                    <input type="text" id="priceCostTokenCalculated" value="0,00045262" readonly class="input-style block w-full p-2.5 rounded-lg text-red-400 font-bold text-lg bg-red-900/20" title="Calculé: DOVX / Ratio">
+                    <p id="ratioDisplay" class="text-xs text-gray-400 mt-1">Ratio appliqué: DOVX / 11.6783100 (basé sur 0.00528552 / 0.00045262)</p>
                 </div>
             </div>
 
@@ -325,7 +327,7 @@
                     <p class="text-sm result-label">Jours pour atteindre le ROI (Break-Even)</p>
                     <p id="resultRoiDays" class="text-2xl mt-1 text-lime-400 result-value">--</p>
                 </div>
-                
+
                 <!-- Statut du ROI -->
                 <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-600">
                     <p class="text-sm result-label">Statut du ROI</p>
@@ -753,6 +755,34 @@
                     </div>
                 </div>
             </div>
+
+            <!-- RÉPARTITION DU CASH BACK (30%) -->
+            <div class="mt-8">
+                <h4 class="text-lg font-semibold text-blue-300 border-b border-gray-700 pb-2 mb-4">
+                    Répartition du Cash Back (30% de la Vente du Pack)
+                </h4>
+                 <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    
+                    <!-- Cash Back (USD) -->
+                    <div class="p-3 bg-blue-900/30 rounded-lg">
+                        <p class="text-sm font-bold text-blue-300">Cash Back (USD $)</p>
+                        <p id="designPackCashBackUsd" class="text-xl mt-1 text-white">--</p>
+                    </div>
+
+                    <!-- Cash Back (WAX) -->
+                    <div class="p-3 bg-blue-900/30 rounded-lg">
+                        <p class="text-sm font-bold text-blue-300">Cash Back (WAX)</p>
+                        <p id="designPackCashBackWax" class="text-xl mt-1 text-white">--</p>
+                    </div>
+                    
+                    <!-- Prix Pack (WAX) -->
+                    <div class="p-3 bg-gray-900/50 rounded-lg">
+                        <p class="text-sm font-bold text-gray-400">Prix Pack (WAX)</p>
+                        <p id="designPackPriceWax" class="text-xl mt-1 text-lime-400">--</p>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- SECTION 12: SNIPER DE MARCHÉ (ATOMIC HUB) -->
@@ -830,13 +860,17 @@
              "https://aa.wax.blacklizard.io/atomicmarket/v1/sales",
              "https://atomic.wax.eosrio.io/atomicmarket/v1/sales"
         ];
-
-        // --- Globals for Ratio Calculation ---
-        const BASE_PRICE_DOVX = 0.00528552;
-        const BASE_PRICE_COST_TOKEN = 0.00045262;
-        const COST_DOVX_RATIO = BASE_PRICE_COST_TOKEN / BASE_PRICE_DOVX;
-        const DOVX_SLIDER_SCALER = 100000.0; 
         
+        // --- Constantes de prix et de ratio fixes ---
+        const REFERENCE_DOVX = 0.00528552;
+        const REFERENCE_TU = 0.00045262;
+        const DOVX_TO_TU_RATIO = REFERENCE_DOVX / REFERENCE_TU; // Exact ratio calculation: 11.678310003093155
+        
+        // --- Globals for Price Storage (Maintenant manuel, utilisation de 'let' pour éviter la redéclaration) ---
+        let currentPriceDovX = 0;
+        let currentPriceCostToken = 0; // Calculated by ratio
+        let currentPriceWaxUsd = 0.05; // Default value, updated by Coingecko/Manual Input
+
         // Constantes de temps et de distribution
         const DAYS_IN_MONTH = 30;
         const DAYS_IN_YEAR = 365;
@@ -893,7 +927,7 @@
                 const technicalName = `${tier.rarityCode}_F${levelNum}_PRODUCER_${typeObj.suffix}`;
                 
                 BUILDING_DATA.push({
-                    // MODIFICATION ICI: On utilise 'F' + niveau au lieu de 'L' + niveau
+                    // MODIFICATION: F + niveau au lieu de L + niveau
                     name: `F${levelNum} ${typeObj.name} (${tier.rarity})`, // Nom d'affichage AVEC Rareté
                     technicalName: technicalName, // Nom de la carte sur la blockchain
                     type: typeObj.type,
@@ -955,18 +989,11 @@
          */
         const parseFrenchFloat = (str) => {
             if (!str) return NaN;
+            // Correction: Remplace la virgule par un point pour la conversion
             const standardStr = str.toString().replace(',', '.');
             return parseFloat(standardStr);
         };
         
-        /**
-         * Formate la valeur entière du slider en prix WAX pour l'affichage.
-         */
-        const formatPriceDisplay = (sliderValue) => {
-            const price = parseInt(sliderValue) / DOVX_SLIDER_SCALER;
-            return price.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-        };
-
         // --------------------------------------------------------------------------
 
         // Définition des données de base de l'économie (totalTuCost est le coût COMBINÉ des 4 jetons)
@@ -996,11 +1023,17 @@
         const priceWaxUsdInput = document.getElementById('priceWaxUsd');
         const numberOfAccountsInput = document.getElementById('numberOfAccounts');
         const divisionsPerAccountInput = document.getElementById('divisionsPerAccount');
-        const dovxPriceSlider = document.getElementById('dovxPriceSlider');
         const numberOfPacksInput = document.getElementById('numberOfPacks');
         const divisionsPerPackInput = document.getElementById('divisionsPerPack');
         const pricePerPackUsdInput = document.getElementById('pricePerPackUsd'); 
-        const btnFetchPrice = document.getElementById('btnFetchPrice'); // NOUVEAU
+        const btnFetchPrice = document.getElementById('btnFetchPrice'); 
+
+        // NOUVEAUX ÉLÉMENTS MANUELS DE PRIX
+        const priceDovXManualInput = document.getElementById('priceDovXManual');
+        const dovxPriceSlider = document.getElementById('dovxPriceSlider');
+        // ÉLÉMENT CALCULÉ DU PRIX TU
+        const priceCostTokenCalculated = document.getElementById('priceCostTokenCalculated');
+        const ratioDisplay = document.getElementById('ratioDisplay');
         
         // NOUVEAUX ÉLÉMENTS DU PACK DESIGNÉ
         const packDesignZoneSelector = document.getElementById('packDesignZoneSelector');
@@ -1012,11 +1045,6 @@
         const designPackCashBackWaxElement = document.getElementById('designPackCashBackWax');
         const designPackPriceWaxElement = document.getElementById('designPackPriceWax');
         
-        // Elements du slider à corriger
-        const sliderValueDisplay = document.getElementById('sliderValueDisplay');
-        const minWaxDisplay = document.getElementById('minWaxDisplay');
-        const maxWaxDisplay = document.getElementById('maxWaxDisplay');
-
         // Elements IA
         const btnAiLore = document.getElementById('btnAiLore');
         const aiLoreOutput = document.getElementById('aiLoreOutput');
@@ -1027,7 +1055,7 @@
         const buildingsTableBody = document.getElementById('buildingsTableBody');
         const userTotalTuDailyEl = document.getElementById('userTotalTuDaily');
         const userTotalRevenueWaxEl = document.getElementById('userTotalRevenueWax');
-        const userTotalMarginWaxEl = document.getElementById('userTotalMarginWax'); // NEW
+        const userTotalMarginWaxEl = document.getElementById('userTotalMarginWax'); 
         const userTotalRevenueUsdMonthlyEl = document.getElementById('userTotalRevenueUsdMonthly'); 
         const buildingTypeFilter = document.getElementById('buildingTypeFilter');
         const section9RatesDisplay = document.getElementById('section9RatesDisplay');
@@ -1059,6 +1087,10 @@
         const marketDealsBody = document.getElementById('marketDealsBody');
         const marketSniperSection = document.getElementById('marketSniperSection');
         const marketRoiFilter = document.getElementById('marketRoiFilter');
+        
+        // ELEMENTS BANNER & INPUTS DE PRIX (Maintenant seulement pour l'affichage dans la Section 2/3)
+        const bannerPriceWaxUsdEl = document.getElementById('bannerPriceWaxUsd'); // Not used anymore, removed banner
+        
 
         
         let scannedWalletData = []; // Stocke les données simulées du wallet
@@ -1143,18 +1175,6 @@
         }
 
         // --------------------------------------------------------------------------
-
-        /**
-         * Met à jour l'affichage de la valeur du slider et des valeurs min/max.
-         */
-        const initializeSliderDisplay = () => {
-            if (minWaxDisplay) minWaxDisplay.textContent = formatPriceDisplay(dovxPriceSlider.min);
-            if (maxWaxDisplay) maxWaxDisplay.textContent = formatPriceDisplay(dovxPriceSlider.max);
-            if (sliderValueDisplay) sliderValueDisplay.textContent = formatPriceDisplay(dovxPriceSlider.value);
-        };
-
-
-        // --------------------------------------------------------------------------
         // --- LOGIQUE DE CALCUL DU PACK DESIGN ---
         // --------------------------------------------------------------------------
         const calculatePackDesign = (tokenPrices) => {
@@ -1168,7 +1188,7 @@
             const pricePackUsd = parseFrenchFloat(packDesignPriceUsdInput.value);
 
             // 1. Validation
-            if (!selectedDesignZone || isNaN(newPriceDovX) || isNaN(newPriceCostToken) || isNaN(priceWaxUsd) || isNaN(divisionsPerPack) || isNaN(pricePackUsd) || divisionsPerPack === 0) {
+            if (!selectedDesignZone || isNaN(newPriceDovX) || newPriceDovX <= 0 || isNaN(newPriceCostToken) || newPriceCostToken <= 0 || isNaN(priceWaxUsd) || priceWaxUsd <= 0 || isNaN(divisionsPerPack) || isNaN(pricePackUsd) || divisionsPerPack === 0) {
                  if(designPackNetUsdElement) designPackNetUsdElement.textContent = '--';
                  if(designPackRoiDailyElement) designPackRoiDailyElement.textContent = '--';
                  if(designPackRoiDaysElement) designPackRoiDaysElement.textContent = '--';
@@ -1238,9 +1258,12 @@
         const updateBuildingTable = (tokenPrices) => {
              const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
              
+             // LOG DE DÉBOGAGE AJOUTÉ
+             console.log(`[SECTION 9] Recalcul USD avec WAX/USD: ${priceWaxUsd}`); 
+
              // MAJ du Header avec les taux
              if(section9RatesDisplay) {
-                 section9RatesDisplay.textContent = `(Taux: 1 DOVX = ${formatWAX(newPriceDovX, 6)} | 1 WAX = ${formatUSD(priceWaxUsd, 2)})`;
+                 section9RatesDisplay.textContent = `(Taux: 1 DOVX = ${formatWAX(newPriceDovX, 6)} | 1 TU = ${formatWAX(newPriceCostToken, 6)})`;
              }
 
              // Mise à jour de chaque ligne du tableau
@@ -1257,6 +1280,7 @@
                  const dailyMarginWax = dailyRevenueWax - dailyCostWax;
 
                  // 4. Projection Mensuelle USD
+                 // CE CALCUL DEPEND DIRECTEMENT DE priceWaxUsd
                  const dailyMarginUsd = dailyMarginWax * priceWaxUsd;
                  const monthlyMarginUsd = dailyMarginUsd * 30;
                  
@@ -1293,11 +1317,10 @@
         };
         
         const updateBuildingTotals = () => {
-             // Récupère les prix actuels (hacky mais évite de repasser tout en paramètre ici)
-             const sliderValue = parseInt(dovxPriceSlider.value);
-             const newPriceDovX = sliderValue / DOVX_SLIDER_SCALER;
-             const newPriceCostToken = newPriceDovX * COST_DOVX_RATIO;
-             const priceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value);
+             // Récupère les prix actuels (variables globales)
+             const newPriceDovX = currentPriceDovX;
+             const newPriceCostToken = currentPriceCostToken;
+             const priceWaxUsd = currentPriceWaxUsd;
              
              let totalDailyTu = 0;
              let totalDailyRevWax = 0;
@@ -1389,8 +1412,8 @@
                     console.log("Succès de récupération des données !");
                     
                     // Traitement des données
-                    const assets = data.data;
-                    const inventory = {}; 
+                    let assets = data.data;
+                    let inventory = {}; 
 
                     assets.forEach(asset => {
                         let name = asset.data?.name;
@@ -1406,7 +1429,7 @@
                         }
                     });
 
-                    const result = Object.keys(inventory).map(key => ({
+                    let result = Object.keys(inventory).map(key => ({
                         name: key,
                         qty: inventory[key]
                     }));
@@ -1514,13 +1537,14 @@
             // Appel API REEL
             scannedWalletData = await fetchWalletAssets(wallet);
             
-            // Récupération des prix actuels pour le calcul
-            const sliderValue = parseInt(dovxPriceSlider.value);
-            const newPriceDovX = sliderValue / DOVX_SLIDER_SCALER;
-            const newPriceCostToken = newPriceDovX * COST_DOVX_RATIO;
-            const priceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value);
+            // Récupération des prix actuels pour le calcul (global storage)
+            const tokenPrices = { 
+                newPriceDovX: currentPriceDovX, 
+                newPriceCostToken: currentPriceCostToken, 
+                priceWaxUsd: currentPriceWaxUsd 
+            };
 
-            calculateWalletEarnings({ newPriceDovX, newPriceCostToken, priceWaxUsd });
+            calculateWalletEarnings(tokenPrices);
 
             // Reset UI
             btnScanWallet.textContent = "Scanner le Portefeuille";
@@ -1539,7 +1563,16 @@
             const multiplier = Math.max(0, parseFloat(packToolMultiplierInput.value) || 1);
             const pricePackUsd = parseFloat(packBuildingPriceInput.value) || 0;
 
-            if (!building) return;
+            // Validation des prix avant tout calcul
+            if (!building || isNaN(newPriceDovX) || newPriceDovX <= 0 || isNaN(newPriceCostToken) || newPriceCostToken <= 0 || isNaN(priceWaxUsd) || priceWaxUsd <= 0) {
+                 if(packBuildingProdEl) packBuildingProdEl.textContent = '--';
+                 if(packBuildingProdBaseEl) packBuildingProdBaseEl.textContent = 'Base: --';
+                 if(packBuildingOpExEl) packBuildingOpExEl.textContent = '--';
+                 if(packBuildingMonthlyNetEl) packBuildingMonthlyNetEl.textContent = '--';
+                 if(packBuildingRoiEl) packBuildingRoiEl.textContent = '--';
+                 if(packBuildingRoiDaysEl) packBuildingRoiDaysEl.textContent = '-- Jours';
+                 return;
+            }
 
             // 1. Prod
             const baseDailyProd = building.prodPerHour * 24 * qty;
@@ -1641,82 +1674,89 @@
             // Fetch Sales
             const sales = await fetchMarketDeals();
             
-            // Get Current Simulator Rates
-            const sliderValue = parseInt(dovxPriceSlider.value);
-            const newPriceDovX = sliderValue / DOVX_SLIDER_SCALER;
-            const newPriceCostToken = newPriceDovX * COST_DOVX_RATIO;
+            // Get Current Simulator Rates (Global storage)
+            const newPriceDovX = currentPriceDovX;
+            const newPriceCostToken = currentPriceCostToken;
             const filterMaxRoi = parseInt(marketRoiFilter.value) || 3650;
 
             let deals = [];
             
-            sales.forEach(sale => {
-                // Safe access to asset name
-                const asset = sale.assets[0];
-                let assetName = asset.name || (asset.template && asset.template.immutable_data && asset.template.immutable_data.name) || (asset.data && asset.data.name);
-                
-                if (assetName) {
-                    const buildingStats = BUILDING_DATA.find(b => b.technicalName === assetName || b.name === assetName);
-                    
-                    if (buildingStats) {
-                        // Math: Price
-                        const priceWax = parseInt(sale.price.amount) / Math.pow(10, sale.price.token_precision);
-                        
-                        // Math: Yield (Same logic as Section 9)
-                        const hourlyCostDovx = buildingStats.dovxCost;
-                        const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
-                        const dailyProdTu = buildingStats.prodPerHour * 24;
-                        const dailyRevenueWax = dailyProdTu * newPriceCostToken;
-                        const dailyNetWax = dailyRevenueWax - dailyCostWax;
-                        
-                        // Math: ROI Days
-                        let roiDays = Infinity;
-                        if (dailyNetWax > 0) {
-                            roiDays = priceWax / dailyNetWax;
-                        }
+            // Validation des taux avant le calcul
+            if (newPriceDovX <= 0 || newPriceCostToken <= 0) {
+                 alert("Erreur: Les prix des tokens sont nuls. Veuillez ajuster la réglette DOVX.");
+                 marketDealsBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-400">Impossible de calculer le ROI. Prix des tokens inconnus.</td></tr>`;
+            } else {
 
-                        // Filter
-                        if (roiDays <= filterMaxRoi) {
-                            deals.push({
-                                name: buildingStats.name,
-                                price: priceWax,
-                                dailyNet: dailyNetWax,
-                                roi: roiDays,
-                                saleId: sale.sale_id,
-                                rarityClass: buildingStats.cssClass
-                            });
+                sales.forEach(sale => {
+                    // Safe access to asset name
+                    const asset = sale.assets[0];
+                    let assetName = asset.name || (asset.template && asset.template.immutable_data && asset.template.immutable_data.name) || (asset.data && asset.data.name);
+                    
+                    if (assetName) {
+                        const buildingStats = BUILDING_DATA.find(b => b.technicalName === assetName || b.name === assetName);
+                        
+                        if (buildingStats) {
+                            // Math: Price
+                            const priceWax = parseInt(sale.price.amount) / Math.pow(10, sale.price.token_precision);
+                            
+                            // Math: Yield (Same logic as Section 9)
+                            const hourlyCostDovx = buildingStats.dovxCost;
+                            const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
+                            const dailyProdTu = buildingStats.prodPerHour * 24;
+                            const dailyRevenueWax = dailyProdTu * newPriceCostToken;
+                            const dailyNetWax = dailyRevenueWax - dailyCostWax;
+                            
+                            // Math: ROI Days
+                            let roiDays = Infinity;
+                            if (dailyNetWax > 0) {
+                                roiDays = priceWax / dailyNetWax;
+                            }
+
+                            // Filter
+                            if (roiDays <= filterMaxRoi) {
+                                deals.push({
+                                    name: buildingStats.name,
+                                    price: priceWax,
+                                    dailyNet: dailyNetWax,
+                                    roi: roiDays,
+                                    saleId: sale.sale_id,
+                                    rarityClass: buildingStats.cssClass
+                                });
+                            }
                         }
                     }
-                }
-            });
-
-            // Sort by ROI (Best first)
-            deals.sort((a, b) => a.roi - b.roi);
-
-            // Render
-            let html = '';
-            deals.forEach(deal => {
-                const roiColor = deal.roi < 100 ? 'text-green-400 font-extrabold' : (deal.roi < 200 ? 'text-yellow-400' : 'text-gray-400');
+                });
                 
-                html += `
-                    <tr class="hover:bg-gray-800/40 border-b border-gray-800/50">
-                        <td class="p-3 font-medium ${deal.rarityClass}">${deal.name}</td>
-                        <td class="p-3 text-right font-bold text-white">${formatWAX(deal.price, 2)}</td>
-                        <td class="p-3 text-right text-green-300">+${formatWAX(deal.dailyNet, 4)}</td>
-                        <td class="p-3 text-center ${roiColor}">${formatUnits(deal.roi)} Jours</td>
-                        <td class="p-3 text-center">
-                            <a href="https://wax.atomichub.io/market/sale/${deal.saleId}" target="_blank" class="inline-block bg-yellow-600 hover:bg-yellow-500 text-black text-xs font-bold py-1 px-3 rounded transition-colors">
-                                ACHETER ↗
-                            </a>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            if (deals.length === 0) {
-                html = `<tr><td colspan="5" class="p-6 text-center text-gray-500">Aucune offre trouvée sous ${filterMaxRoi} jours de ROI.</td></tr>`;
+                // Sort by ROI (Best first)
+                deals.sort((a, b) => a.roi - b.roi);
+
+                // Render
+                let html = '';
+                deals.forEach(deal => {
+                    const roiColor = deal.roi < 100 ? 'text-green-400 font-extrabold' : (deal.roi < 200 ? 'text-yellow-400' : 'text-gray-400');
+                    
+                    html += `
+                        <tr class="hover:bg-gray-800/40 border-b border-gray-800/50">
+                            <td class="p-3 font-medium ${deal.rarityClass}">${deal.name}</td>
+                            <td class="p-3 text-right font-bold text-white">${formatWAX(deal.price, 2)}</td>
+                            <td class="p-3 text-right text-green-300">+${formatWAX(deal.dailyNet, 4)}</td>
+                            <td class="p-3 text-center ${roiColor}">${formatUnits(deal.roi)} Jours</td>
+                            <td class="p-3 text-center">
+                                <a href="https://wax.atomichub.io/market/sale/${deal.saleId}" target="_blank" class="inline-block bg-yellow-600 hover:bg-yellow-500 text-black text-xs font-bold py-1 px-3 rounded transition-colors">
+                                    ACHETER ↗
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                if (deals.length === 0) {
+                    html = `<tr><td colspan="5" class="p-6 text-center text-gray-500">Aucune offre trouvée sous ${filterMaxRoi} jours de ROI.</td></tr>`;
+                }
+
+                marketDealsBody.innerHTML = html;
             }
 
-            marketDealsBody.innerHTML = html;
             marketResultsContainer.classList.remove('hidden');
 
             // Reset UI
@@ -1736,8 +1776,31 @@
             const selectedIndex = parseInt(zoneSelector.value);
             const selectedZone = ZONE_DATA[selectedIndex];
 
-            // 1. Lecture des paramètres de base
-            const priceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value);
+            // 1. Lecture des prix MANUELS pour le calcul
+            currentPriceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value) || 0;
+            const priceWaxUsd = currentPriceWaxUsd;
+            
+            // LECTURE DE DOVX ET CALCUL DU TU PAR RATIO
+            currentPriceDovX = parseFrenchFloat(priceDovXManualInput.value) || 0;
+            const newPriceDovX = currentPriceDovX;
+            
+            // CALCUL DU PRIX TU PAR RATIO (DOVX / DOVX_TO_TU_RATIO)
+            // On divise DOVX par le ratio pour obtenir le prix TU.
+            currentPriceCostToken = (newPriceDovX > 0) ? newPriceDovX / DOVX_TO_TU_RATIO : 0;
+            const newPriceCostToken = currentPriceCostToken;
+            
+            // Mise à jour de l'input TU calculé (pour affichage)
+            if(priceCostTokenCalculated) priceCostTokenCalculated.value = newPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+            
+            // Mise à jour de l'affichage du ratio
+            if(ratioDisplay) {
+                 const roundedRatio = DOVX_TO_TU_RATIO.toFixed(7);
+                 ratioDisplay.textContent = `Ratio appliqué: DOVX / ${roundedRatio} (basé sur ${REFERENCE_DOVX} / ${REFERENCE_TU})`;
+            }
+
+            // LOG DE DÉBOGAGE AJOUTÉ
+            console.log(`[CALCULATE] WAX/USD Price lu: ${priceWaxUsd} | DOVX Price lu: ${newPriceDovX} | TU Price calculé: ${newPriceCostToken}`);
+
             const numberOfAccounts = Math.max(1, parseInt(numberOfAccountsInput.value) || 1); 
             const divisionsPerAccount = Math.max(1, parseInt(divisionsPerAccountInput.value) || 1);
             
@@ -1764,15 +1827,29 @@
             const totalInvestmentUSD = numberOfPacks * pricePerPackUsdInputVal;
 
 
-            // 2. Détermination des prix des jetons
-            const sliderValue = parseInt(dovxPriceSlider.value);
-            const newPriceDovX = sliderValue / DOVX_SLIDER_SCALER; 
-            const newPriceCostToken = newPriceDovX * COST_DOVX_RATIO; 
+            // 2. Validation des prix des tokens (DOVX/TU)
+            if (!selectedZone || isNaN(newPriceDovX) || newPriceDovX < 0 || isNaN(newPriceCostToken) || newPriceCostToken < 0 || isNaN(priceWaxUsd) || priceWaxUsd <= 0) {
+                // Si les prix tokens sont invalides, réinitialiser tous les résultats dépendants
+                document.querySelectorAll('.result-value').forEach(el => el.textContent = '--');
+                if(document.getElementById('consumptionTableBody')) document.getElementById('consumptionTableBody').innerHTML = '';
+                
+                // Réinitialisation des totaux du volume (Section 7)
+                if(document.getElementById('totalInvestmentUsdDisplay')) document.getElementById('totalInvestmentUsdDisplay').textContent = '--';
+                if(document.getElementById('totalInvestmentWaxDisplay')) document.getElementById('totalInvestmentWaxDisplay').textContent = '--';
+                if(document.getElementById('cashBackUsd')) document.getElementById('cashBackUsd').textContent = '--';
+                if(document.getElementById('cashBackWax')) document.getElementById('cashBackWax').textContent = '--';
+                if(document.getElementById('teamUsd')) document.getElementById('teamUsd').textContent = '--';
+                if(document.getElementById('teamWax')) document.getElementById('teamWax').textContent = '--';
+                if(document.getElementById('marketTokenUsd')) document.getElementById('marketTokenUsd').textContent = '--';
+                if(document.getElementById('marketTokenWax')) document.getElementById('marketTokenWax').textContent = '--';
+                if(document.getElementById('pubUsd')) document.getElementById('pubUsd').textContent = '--';
+                if(document.getElementById('pubWax')) document.getElementById('pubWax').textContent = '--';
 
-            // Mise à jour de l'affichage des prix des tokens
-            if(document.getElementById('priceDovX')) document.getElementById('priceDovX').value = newPriceDovX.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-            if(document.getElementById('priceCostToken')) document.getElementById('priceCostToken').value = newPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-            if(sliderValueDisplay) sliderValueDisplay.textContent = formatPriceDisplay(sliderValue);
+                const zeroPrices = { newPriceDovX: 0, newPriceCostToken: 0, priceWaxUsd: priceWaxUsd };
+                calculatePackDesign(zeroPrices);
+                updateBuildingTable(zeroPrices);
+                return;
+            }
 
             const tokenPrices = { newPriceDovX, newPriceCostToken, priceWaxUsd };
 
@@ -1784,24 +1861,6 @@
             
             // --- Calculs du Volume (Sections 2-7) ---
             
-            // Si l'une des valeurs nécessaires au calcul du VOLUME est invalide, on sort
-            if (!selectedZone || isNaN(newPriceDovX) || isNaN(newPriceCostToken) || isNaN(priceWaxUsd)) {
-                document.querySelectorAll('.result-value').forEach(el => el.textContent = '--');
-                if(document.getElementById('consumptionTableBody')) document.getElementById('consumptionTableBody').innerHTML = '';
-                // Réinitialisation des totaux du volume
-                if(document.getElementById('totalInvestmentUsdDisplay')) document.getElementById('totalInvestmentUsdDisplay').textContent = '--';
-                if(document.getElementById('totalInvestmentWaxDisplay')) document.getElementById('totalInvestmentWaxDisplay').textContent = '--';
-                if(document.getElementById('cashBackUsd')) document.getElementById('cashBackUsd').textContent = '--';
-                if(document.getElementById('cashBackWax')) document.getElementById('cashBackWax').textContent = '--';
-                if(document.getElementById('teamUsd')) document.getElementById('teamUsd').textContent = '--';
-                if(document.getElementById('teamWax')) document.getElementById('teamWax').textContent = '--';
-                if(document.getElementById('marketTokenUsd')) document.getElementById('marketTokenUsd').textContent = '--';
-                if(document.getElementById('marketTokenWax')) document.getElementById('marketTokenWax').textContent = '--';
-                if(document.getElementById('pubUsd')) document.getElementById('pubUsd').textContent = '--';
-                if(document.getElementById('pubWax')) document.getElementById('pubWax').textContent = '--';
-                return;
-            }
-
             const totalMultiplier = numberOfAccounts * divisionsPerAccount;
             
             // Calculs pour UNE SEULE division (base)
@@ -1976,8 +2035,14 @@
             if(document.getElementById('totalUnitsConsumedDaily')) document.getElementById('totalUnitsConsumedDaily').textContent = formatUnits(totalTuUnitsConsumedDaily) + ' unités';
             if(document.getElementById('totalWaxCostDaily')) document.getElementById('totalWaxCostDaily').textContent = formatWAX(totalWaxCostDailyCalculated, 4);
 
+            // Ratio d'Hyper-Amplification ne peut pas être calculé si newPriceCostToken est 0
+            let ratioAmplificationText = "--";
+            if (newPriceCostToken > 0 && unitsCostPerTokenBase > 0) {
+                const effectiveRatio = (unitsDovX * newPriceDovX) / (unitsCostPerTokenBase * newPriceCostToken);
+                ratioAmplificationText = effectiveRatio.toFixed(4) + 'x';
+            }
             if(document.getElementById('unitsDovXGenerated')) document.getElementById('unitsDovXGenerated').textContent = formatUnits(unitsDovX) + ' unités';
-            if(document.getElementById('ratioAmplification')) document.getElementById('ratioAmplification').textContent = ratioAmplification.toFixed(4) + 'x';
+            if(document.getElementById('ratioAmplification')) document.getElementById('ratioAmplification').textContent = ratioAmplificationText;
             
             // --- Affichage de la Section 7: Répartition des Ventes du Volume ---
             if(document.getElementById('totalInvestmentUsdDisplay')) document.getElementById('totalInvestmentUsdDisplay').textContent = formatUSD(totalInvestmentUSD, 2);
@@ -2019,36 +2084,40 @@
             }
         }
         
-        // --------------------------------------------------------------------------
-        // --- NOUVEAU: RECUPERATION PRIX LIVE (COINGECKO) ---
-        // --------------------------------------------------------------------------
+        // --- RECUPERATION PRIX LIVE WAX/USD (COINGECKO) ---
         const fetchLiveWaxPrice = async () => {
-            btnFetchPrice.textContent = "⌛...";
+            const priceInput = priceWaxUsdInput;
+            const btn = btnFetchPrice;
+            if (btn) btn.textContent = "⌛...";
+
             try {
                 // Utilisation de l'API publique CoinGecko pour WAXP (WAX)
                 const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=wax&vs_currencies=usd');
                 
-                if (!response.ok) throw new Error("Erreur API");
+                if (!response.ok) throw new Error("Erreur API CoinGecko");
                 
                 const data = await response.json();
                 const price = data.wax.usd;
 
                 // Mise à jour de l'input (format français avec virgule)
                 if (price) {
-                    priceWaxUsdInput.value = price.toString().replace('.', ',');
+                    priceInput.value = price.toString().replace('.', ',');
+                    currentPriceWaxUsd = price; // Update global state
                     calculate(); // Recalcul immédiat
                     
-                    btnFetchPrice.textContent = "✅";
+                    if (btn) btn.textContent = "✅";
                     setTimeout(() => {
-                        btnFetchPrice.textContent = "🔄 Live";
+                        if (btn) btn.textContent = "🔄 Live";
                     }, 2000);
                 }
 
             } catch (e) {
-                console.warn("Erreur fetch prix WAX:", e);
-                btnFetchPrice.textContent = "❌ Err";
+                console.warn("Erreur fetch prix WAX/USD:", e);
+                if (btn) btn.textContent = "❌ Err";
                 setTimeout(() => {
-                    btnFetchPrice.textContent = "🔄 Live";
+                    if (btn) btn.textContent = "🔄 Live";
+                    priceWaxUsdInput.value = "0,05"; // Reset to default visual if fetch fails
+                    currentPriceWaxUsd = 0.05; // Reset global state if fetch fails
                 }, 3000);
             }
         };
@@ -2056,6 +2125,7 @@
         if (btnFetchPrice) {
             btnFetchPrice.addEventListener('click', fetchLiveWaxPrice);
         }
+
 
         // Handler pour le Lore de Pack
         btnAiLore.addEventListener('click', async () => {
@@ -2081,25 +2151,87 @@
 
         // Événements (écoute de tous les changements d'entrée pour recalculer)
         const inputsToWatch = [
-            zoneSelector, packDesignZoneSelector, dovxPriceSlider, priceWaxUsdInput, 
+            zoneSelector, packDesignZoneSelector, priceWaxUsdInput, 
             numberOfAccountsInput, divisionsPerAccountInput, numberOfPacksInput, 
             divisionsPerPackInput, pricePerPackUsdInput, packDesignPriceUsdInput,
-            packBuildingSelect, packBuildingQtyInput, packToolMultiplierInput, packBuildingPriceInput // New inputs
+            packBuildingSelect, packBuildingQtyInput, packToolMultiplierInput, packBuildingPriceInput 
         ];
 
         inputsToWatch.forEach(input => {
-            if(input) input.addEventListener('input', calculate); // Check if input exists (Section 11 elements)
+            if(input) input.addEventListener('input', calculate); // Check if input exists
         });
+        
+        // =========================================================================
+        // NOUVELLE LOGIQUE POUR LA RÉGLETTE UNIQUE DOVX (Synchronisation)
+        // =========================================================================
+        
+        // Setup event listener for DOVX slider to input sync
+        if (dovxPriceSlider) {
+            dovxPriceSlider.addEventListener('input', () => {
+                const val = parseFloat(dovxPriceSlider.value);
+                // Update the text input with the slider value
+                priceDovXManualInput.value = val.toFixed(8).replace('.', ',');
+                calculate();
+            });
+        }
+
+        // Setup event listener for DOVX manual input to slider sync and format correction
+        if (priceDovXManualInput) {
+            priceDovXManualInput.addEventListener('input', () => {
+                let val = parseFrenchFloat(priceDovXManualInput.value);
+                
+                if (isNaN(val)) val = 0;
+                
+                // Bound the slider value (for visual fidelity)
+                const maxVal = parseFloat(dovxPriceSlider.max);
+                const minVal = parseFloat(dovxPriceSlider.min);
+                let boundedVal = Math.max(minVal, Math.min(maxVal, val));
+                dovxPriceSlider.value = boundedVal.toFixed(8);
+                
+                // Recalculate and update the text input for formatting
+                // Assure la cohérence du format français avec 8 décimales
+                priceDovXManualInput.value = val.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+                
+                calculate();
+            });
+        }
+        
+        // =========================================================================
+
 
         // Lancement initial au chargement
         window.onload = function() {
-            initializeSliderDisplay();
-            initializeBuildingTable(); // Init du tableau de batiments
+            initializeBuildingTable(); 
             
-            // Tentative de fetch auto au démarrage
-            fetchLiveWaxPrice();
+            // 1. Initialisation des prix des tokens DOVX/TU avec les références utilisateur
+            // On utilise REFERENCE_DOVX et REFERENCE_TU définis au début du script pour la précision.
+            const initialDovxValue = REFERENCE_DOVX;
+            currentPriceDovX = initialDovxValue; 
             
-            calculate();
+            // P_TU = P_DOVX / DOVX_TO_TU_RATIO
+            currentPriceCostToken = REFERENCE_TU; // On initialise au prix de référence TU pour garantir la cohérence au départ
+            
+            // Setup DOVX input initial state (DOM updates for initial state)
+            if (priceDovXManualInput) priceDovXManualInput.value = initialDovxValue.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+            // Mise à jour de la valeur initiale de la réglette
+            if (dovxPriceSlider) dovxPriceSlider.value = initialDovxValue.toFixed(8);
+            if(priceCostTokenCalculated) priceCostTokenCalculated.value = currentPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+            
+            // Mise à jour de l'affichage du ratio au chargement
+             if(ratioDisplay) {
+                 const roundedRatio = DOVX_TO_TU_RATIO.toFixed(7);
+                 ratioDisplay.textContent = `Ratio appliqué: DOVX / ${roundedRatio} (basé sur ${REFERENCE_DOVX} / ${REFERENCE_TU})`;
+            }
+
+
+            // 2. Tentative de fetch USD auto au démarrage
+            fetchLiveWaxPrice(); // Will call calculate()
+            
+            // 3. Appeler calculate() si fetchLiveWaxPrice échoue ou si les prix n'ont pas encore été définis.
+            if(currentPriceWaxUsd === 0.05) { // Check if fetch succeeded or if still default
+                 calculate();
+            }
+
         };
 
     </script>
