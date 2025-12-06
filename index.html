@@ -658,6 +658,11 @@
                         <p id="walletMonthlyUsd" class="text-3xl mt-1 text-green-400 font-extrabold">--</p>
                     </div>
                 </div>
+                
+                <!-- NOUVEAU: RÉSUMÉ SCÉNARIO -->
+                <div id="walletScenarioSummary" class="mb-6 p-4 bg-blue-900/20 rounded-lg border border-blue-500/30 text-sm text-blue-200 shadow-sm">
+                    <!-- Rempli par JS -->
+                </div>
 
                 <!-- Liste détaillée -->
                 <h4 class="text-md font-semibold text-gray-300 mb-3 border-b border-gray-800 pb-2">Détail des Actifs Détenus</h4>
@@ -1361,6 +1366,21 @@
             if (!scannedWalletData || scannedWalletData.length === 0) return;
 
             const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
+            
+            // --- NOUVEAU : MISE À JOUR DU RÉSUMÉ SCÉNARIO ---
+            const summaryEl = document.getElementById('walletScenarioSummary');
+            if(summaryEl) {
+                summaryEl.innerHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between items-center w-full">
+                        <span class="font-bold text-cyan-300 mb-2 sm:mb-0">ℹ️ Scénario de Marché Appliqué</span>
+                        <div class="flex space-x-6 text-gray-300">
+                            <span>Valeur WAX: <span class="text-white font-mono font-bold">${formatUSD(priceWaxUsd, 3)}</span></span>
+                            <span>Valeur DOVX: <span class="text-white font-mono font-bold">${formatWAX(newPriceDovX, 6)}</span></span>
+                        </div>
+                    </div>
+                `;
+            }
+
             let totalBuildings = 0;
             let totalMonthlyWax = 0;
             let totalMonthlyUsd = 0;
@@ -1373,8 +1393,6 @@
                 const buildingStats = BUILDING_DATA.find(b => b.technicalName === asset.name || b.name === asset.name);
 
                 if (buildingStats) {
-                    console.log(`Correspondance trouvée: ${asset.name} -> ${buildingStats.name}`);
-                    
                     // Calculs (identiques au tableau Section 9)
                     const hourlyCostDovx = buildingStats.dovxCost;
                     const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
