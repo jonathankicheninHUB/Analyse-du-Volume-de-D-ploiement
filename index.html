@@ -893,7 +893,8 @@
                 const technicalName = `${tier.rarityCode}_F${levelNum}_PRODUCER_${typeObj.suffix}`;
                 
                 BUILDING_DATA.push({
-                    name: `${tier.level} ${typeObj.name}`, // Nom d'affichage
+                    // MODIFICATION ICI: On utilise 'F' + niveau au lieu de 'L' + niveau
+                    name: `F${levelNum} ${typeObj.name} (${tier.rarity})`, // Nom d'affichage AVEC Rareté
                     technicalName: technicalName, // Nom de la carte sur la blockchain
                     type: typeObj.type,
                     rarity: tier.rarity,
@@ -1114,7 +1115,7 @@
                 if(packBuildingSelect) {
                     const opt = document.createElement('option');
                     opt.value = index;
-                    opt.textContent = `${building.name} (${building.rarity})`;
+                    opt.textContent = `${building.name}`;
                     packBuildingSelect.appendChild(opt);
                 }
             });
@@ -1472,10 +1473,11 @@
                     totalMonthlyWax += assetTotalMonthlyWax;
                     totalMonthlyUsd += assetTotalMonthlyUsd;
 
+                    // COLORATION DU NOM AVEC LA RARETÉ
                     rowsHtml += `
                         <tr class="hover:bg-gray-800/30 transition-colors">
                             <td class="p-3">
-                                <span class="font-medium text-cyan-200">${buildingStats.name}</span>
+                                <span class="font-medium ${buildingStats.cssClass}">${buildingStats.name}</span>
                                 <span class="text-xs text-gray-500 block">ID: ${asset.name}</span>
                                 <span class="text-xs text-gray-400 block">ROI: ${formatUSD(monthlyMarginUsd, 2)}/mois</span>
                             </td>
