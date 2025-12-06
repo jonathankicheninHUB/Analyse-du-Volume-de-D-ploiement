@@ -44,6 +44,26 @@
         .rarity-epic { color: #a855f7; }
         .rarity-legendary { color: #eab308; }
         .rarity-supreme { color: #ef4444; text-shadow: 0 0 5px rgba(239, 68, 68, 0.5); }
+        
+        /* Animation pour le sniper */
+        @keyframes scan-line {
+            0% { top: 0; opacity: 0; }
+            50% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .scan-overlay {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #eab308;
+            box-shadow: 0 0 10px #eab308;
+            animation: scan-line 2s linear infinite;
+            display: none;
+        }
+        .scanning .scan-overlay {
+            display: block;
+        }
     </style>
 </head>
 <body class="text-white p-4 sm:p-8 min-h-screen flex justify-center items-start">
@@ -82,10 +102,15 @@
                     </select>
                 </div>
                 
-                <!-- Prix WAX/USD -->
+                <!-- Prix WAX/USD (AVEC BOUTON LIVE) -->
                 <div>
-                    <label for="priceWaxUsd" class="block text-sm font-medium result-label">Prix d'un WAX en USD ($)</label>
-                    <input type="text" id="priceWaxUsd" value="0,05" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-pink-500 focus:border-pink-500" inputmode="decimal">
+                    <label for="priceWaxUsd" class="block text-sm font-medium result-label mb-1">Prix d'un WAX en USD ($)</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="priceWaxUsd" value="0,05" class="input-style block w-full p-2.5 rounded-lg focus:ring-pink-500 focus:border-pink-500" inputmode="decimal">
+                        <button id="btnFetchPrice" class="bg-pink-900/40 hover:bg-pink-700 text-pink-300 border border-pink-700 font-bold px-3 rounded-lg transition-colors text-xs flex items-center justify-center whitespace-nowrap" title="Récupérer prix actuel">
+                            🔄 Live
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -227,30 +252,6 @@
             <div class="mt-6 pt-4 border-t border-gray-700">
                 <p class="text-sm result-label">Marge/Déficit Nette (USD $)</p>
                 <p id="resultNetUsd" class="text-3xl mt-1 result-value">--</p>
-            </div>
-        </div>
-
-        <!-- AI ADVISOR SECTION -->
-        <div class="card p-6 rounded-xl border border-purple-500/30 relative overflow-hidden">
-            <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                <svg class="w-32 h-32 text-purple-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6a1 1 0 0 0-1 1v4.59L8.29 14.3a1 1 0 0 0 1.42 1.4l3-3A1 1 0 0 0 13 12V7a1 1 0 0 0-1-1z"/></svg>
-            </div>
-            
-            <h2 class="text-xl font-semibold border-b border-purple-500/50 pb-3 text-purple-300 mb-4 flex items-center">
-                <span class="text-2xl mr-2">✨</span> Conseiller Stratégique IA
-            </h2>
-            
-            <p class="text-sm text-gray-400 mb-4">
-                Demandez à l'IA d'analyser vos données financières actuelles et de vous fournir un rapport tactique d'investissement.
-            </p>
-
-            <button id="btnAiAdvisor" class="w-full sm:w-auto bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg transition-all duration-200 flex items-center justify-center space-x-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                <span>Générer Rapport Stratégique ✨</span>
-            </button>
-
-            <div id="aiAdvisorOutput" class="hidden mt-4 p-4 bg-purple-900/20 border border-purple-500/30 rounded-lg text-gray-200 text-sm italic leading-relaxed">
-                <!-- Le contenu de l'IA apparaîtra ici -->
             </div>
         </div>
 
@@ -754,6 +755,55 @@
             </div>
         </div>
 
+        <!-- SECTION 12: SNIPER DE MARCHÉ (ATOMIC HUB) -->
+        <div id="marketSniperSection" class="card p-6 rounded-xl border border-yellow-500/50 mt-8 relative overflow-hidden">
+             <!-- Scan Effect Overlay -->
+             <div id="scanOverlay" class="scan-overlay"></div>
+             
+             <div class="absolute top-0 right-0 w-16 h-16 bg-yellow-500/10 rounded-bl-full"></div>
+            
+            <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-yellow-400 flex items-center mb-4">
+                <span class="mr-2">🎯</span> 12. Sniper de Marché (AtomicHub Live Deals)
+            </h3>
+            
+            <p class="text-sm text-gray-400 mb-6">
+                Scannez le marché AtomicHub en temps réel pour trouver les bâtiments vendus en dessous de leur valeur de rendement.
+                Le ROI est calculé avec vos paramètres actuels (Prix Tokens & Coûts).
+            </p>
+
+            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+                 <button id="btnScanMarket" class="bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg shadow-yellow-600/20 flex items-center justify-center">
+                    <span class="mr-2">🔍</span> Scanner les Offres (ROI)
+                </button>
+                
+                <div class="flex items-center space-x-2 bg-gray-900 px-4 py-2 rounded-lg border border-gray-700">
+                     <span class="text-sm text-gray-400">Seuils Max ROI (Jours):</span>
+                     <input type="number" id="marketRoiFilter" value="300" class="bg-transparent border-none text-yellow-400 font-bold w-16 focus:ring-0 text-right">
+                </div>
+            </div>
+
+            <!-- RESULTATS DU SNIPER -->
+            <div id="marketResultsContainer" class="hidden">
+                 <div class="overflow-x-auto max-h-[500px] overflow-y-auto bg-gray-900/50 rounded-lg border border-gray-700">
+                    <table class="min-w-full divide-y divide-gray-800 text-sm">
+                        <thead class="bg-gray-800 text-gray-400 sticky top-0 z-10 shadow-md">
+                            <tr>
+                                <th class="p-3 text-left">Bâtiment (Offre)</th>
+                                <th class="p-3 text-right">Prix (WAX)</th>
+                                <th class="p-3 text-right text-green-300">Rendement Net/Jour</th>
+                                <th class="p-3 text-center text-yellow-300 font-bold">ROI (Jours)</th>
+                                <th class="p-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="marketDealsBody" class="divide-y divide-gray-800/50 text-gray-300">
+                            <!-- Rempli par JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-xs text-gray-500 mt-2 text-right">*Les frais de marché ne sont pas inclus. DYOR.</p>
+            </div>
+        </div>
+
 
         <div class="text-xs text-gray-500 text-center pt-4 pb-8">
             *Les coûts de combat sont basés sur la colonne 'Combat Cost' et sont divisés par 4 pour les quatre jetons de coût distincts (DOV-H, R, S, F).
@@ -773,6 +823,12 @@
             "https://aa.wax.blacklizard.io/atomicassets/v1/assets",
             "https://atomic.wax.eosrio.io/atomicassets/v1/assets",
             "https://api.wax-aa.bountyblok.io/atomicassets/v1/assets"
+        ];
+        // ENDPOINTS SPECIFIQUES MARKET (Souvent les mêmes base URL mais path diff)
+        const ATOMIC_MARKET_ENDPOINTS = [
+            "https://wax.api.atomicassets.io/atomicmarket/v1/sales",
+             "https://aa.wax.blacklizard.io/atomicmarket/v1/sales",
+             "https://atomic.wax.eosrio.io/atomicmarket/v1/sales"
         ];
 
         // --- Globals for Ratio Calculation ---
@@ -943,6 +999,7 @@
         const numberOfPacksInput = document.getElementById('numberOfPacks');
         const divisionsPerPackInput = document.getElementById('divisionsPerPack');
         const pricePerPackUsdInput = document.getElementById('pricePerPackUsd'); 
+        const btnFetchPrice = document.getElementById('btnFetchPrice'); // NOUVEAU
         
         // NOUVEAUX ÉLÉMENTS DU PACK DESIGNÉ
         const packDesignZoneSelector = document.getElementById('packDesignZoneSelector');
@@ -960,8 +1017,6 @@
         const maxWaxDisplay = document.getElementById('maxWaxDisplay');
 
         // Elements IA
-        const btnAiAdvisor = document.getElementById('btnAiAdvisor');
-        const aiAdvisorOutput = document.getElementById('aiAdvisorOutput');
         const btnAiLore = document.getElementById('btnAiLore');
         const aiLoreOutput = document.getElementById('aiLoreOutput');
         const packNameInput = document.getElementById('packName');
@@ -996,6 +1051,13 @@
         const packBuildingMonthlyNetEl = document.getElementById('packBuildingMonthlyNet');
         const packBuildingRoiEl = document.getElementById('packBuildingRoi');
         const packBuildingRoiDaysEl = document.getElementById('packBuildingRoiDays');
+        
+        // Elements Section 12 (Market Sniper)
+        const btnScanMarket = document.getElementById('btnScanMarket');
+        const marketResultsContainer = document.getElementById('marketResultsContainer');
+        const marketDealsBody = document.getElementById('marketDealsBody');
+        const marketSniperSection = document.getElementById('marketSniperSection');
+        const marketRoiFilter = document.getElementById('marketRoiFilter');
 
         
         let scannedWalletData = []; // Stocke les données simulées du wallet
@@ -1534,6 +1596,136 @@
             }
         };
 
+        // --------------------------------------------------------------------------
+        // --- LOGIQUE SECTION 12: MARKET SNIPER (NEW) ---
+        // --------------------------------------------------------------------------
+        
+        const fetchMarketDeals = async () => {
+             // 1. Params
+             const endpoints = ATOMIC_MARKET_ENDPOINTS;
+             let queryParams = `?collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}&state=1&limit=100&order=asc&sort=price`;
+             
+             // 2. Fetch loop
+             for (let i = 0; i < endpoints.length; i++) {
+                const endpoint = endpoints[i];
+                const url = `${endpoint}${queryParams}`;
+
+                try {
+                    console.log(`Scan Marché sur ${endpoint}...`);
+                    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+                    if (!response.ok) continue;
+
+                    const data = await response.json();
+                    if (!data.success) continue;
+
+                    return data.data; // Sales array
+
+                } catch (error) {
+                    console.warn(`Erreur Market endpoint ${i}:`, error);
+                }
+             }
+             
+             alert("Impossible de contacter le marché AtomicHub. Vérifiez votre connexion.");
+             return [];
+        };
+
+        const calculateMarketDeals = async () => {
+            // UI State
+            marketSniperSection.classList.add('scanning');
+            btnScanMarket.textContent = "Scan en cours...";
+            btnScanMarket.disabled = true;
+            btnScanMarket.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            // Fetch Sales
+            const sales = await fetchMarketDeals();
+            
+            // Get Current Simulator Rates
+            const sliderValue = parseInt(dovxPriceSlider.value);
+            const newPriceDovX = sliderValue / DOVX_SLIDER_SCALER;
+            const newPriceCostToken = newPriceDovX * COST_DOVX_RATIO;
+            const filterMaxRoi = parseInt(marketRoiFilter.value) || 3650;
+
+            let deals = [];
+            
+            sales.forEach(sale => {
+                // Safe access to asset name
+                const asset = sale.assets[0];
+                let assetName = asset.name || (asset.template && asset.template.immutable_data && asset.template.immutable_data.name) || (asset.data && asset.data.name);
+                
+                if (assetName) {
+                    const buildingStats = BUILDING_DATA.find(b => b.technicalName === assetName || b.name === assetName);
+                    
+                    if (buildingStats) {
+                        // Math: Price
+                        const priceWax = parseInt(sale.price.amount) / Math.pow(10, sale.price.token_precision);
+                        
+                        // Math: Yield (Same logic as Section 9)
+                        const hourlyCostDovx = buildingStats.dovxCost;
+                        const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
+                        const dailyProdTu = buildingStats.prodPerHour * 24;
+                        const dailyRevenueWax = dailyProdTu * newPriceCostToken;
+                        const dailyNetWax = dailyRevenueWax - dailyCostWax;
+                        
+                        // Math: ROI Days
+                        let roiDays = Infinity;
+                        if (dailyNetWax > 0) {
+                            roiDays = priceWax / dailyNetWax;
+                        }
+
+                        // Filter
+                        if (roiDays <= filterMaxRoi) {
+                            deals.push({
+                                name: buildingStats.name,
+                                price: priceWax,
+                                dailyNet: dailyNetWax,
+                                roi: roiDays,
+                                saleId: sale.sale_id,
+                                rarityClass: buildingStats.cssClass
+                            });
+                        }
+                    }
+                }
+            });
+
+            // Sort by ROI (Best first)
+            deals.sort((a, b) => a.roi - b.roi);
+
+            // Render
+            let html = '';
+            deals.forEach(deal => {
+                const roiColor = deal.roi < 100 ? 'text-green-400 font-extrabold' : (deal.roi < 200 ? 'text-yellow-400' : 'text-gray-400');
+                
+                html += `
+                    <tr class="hover:bg-gray-800/40 border-b border-gray-800/50">
+                        <td class="p-3 font-medium ${deal.rarityClass}">${deal.name}</td>
+                        <td class="p-3 text-right font-bold text-white">${formatWAX(deal.price, 2)}</td>
+                        <td class="p-3 text-right text-green-300">+${formatWAX(deal.dailyNet, 4)}</td>
+                        <td class="p-3 text-center ${roiColor}">${formatUnits(deal.roi)} Jours</td>
+                        <td class="p-3 text-center">
+                            <a href="https://wax.atomichub.io/market/sale/${deal.saleId}" target="_blank" class="inline-block bg-yellow-600 hover:bg-yellow-500 text-black text-xs font-bold py-1 px-3 rounded transition-colors">
+                                ACHETER ↗
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            if (deals.length === 0) {
+                html = `<tr><td colspan="5" class="p-6 text-center text-gray-500">Aucune offre trouvée sous ${filterMaxRoi} jours de ROI.</td></tr>`;
+            }
+
+            marketDealsBody.innerHTML = html;
+            marketResultsContainer.classList.remove('hidden');
+
+            // Reset UI
+            marketSniperSection.classList.remove('scanning');
+            btnScanMarket.textContent = "🔍 Scanner les Offres (ROI)";
+            btnScanMarket.disabled = false;
+            btnScanMarket.classList.remove('opacity-50', 'cursor-not-allowed');
+        };
+
+        btnScanMarket.addEventListener('click', calculateMarketDeals);
+
 
         // --------------------------------------------------------------------------
         // --- LOGIQUE DE CALCUL DU VOLUME (Sections 1 à 7) ---
@@ -1824,40 +2016,44 @@
                 return "Erreur de communication avec l'IA. Vérifiez votre connexion.";
             }
         }
+        
+        // --------------------------------------------------------------------------
+        // --- NOUVEAU: RECUPERATION PRIX LIVE (COINGECKO) ---
+        // --------------------------------------------------------------------------
+        const fetchLiveWaxPrice = async () => {
+            btnFetchPrice.textContent = "⌛...";
+            try {
+                // Utilisation de l'API publique CoinGecko pour WAXP (WAX)
+                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=wax&vs_currencies=usd');
+                
+                if (!response.ok) throw new Error("Erreur API");
+                
+                const data = await response.json();
+                const price = data.wax.usd;
 
-        // Handler pour le Conseiller Stratégique
-        btnAiAdvisor.addEventListener('click', async () => {
-            const outputDiv = document.getElementById('aiAdvisorOutput');
-            const btn = document.getElementById('btnAiAdvisor');
-            
-            // UI Loading
-            outputDiv.classList.remove('hidden');
-            outputDiv.innerHTML = "Analyse des flux financiers en cours...";
-            btn.classList.add('ai-loading');
-            btn.disabled = true;
+                // Mise à jour de l'input (format français avec virgule)
+                if (price) {
+                    priceWaxUsdInput.value = price.toString().replace('.', ',');
+                    calculate(); // Recalcul immédiat
+                    
+                    btnFetchPrice.textContent = "✅";
+                    setTimeout(() => {
+                        btnFetchPrice.textContent = "🔄 Live";
+                    }, 2000);
+                }
 
-            // Récupération des données du contexte
-            const netMonthly = document.getElementById('resultNetUsdMonthly').textContent;
-            const roiDays = document.getElementById('resultRoiDays').textContent;
-            const investment = document.getElementById('resultTotalInvestment').textContent;
-            const zone = document.getElementById('zoneSelector').options[document.getElementById('zoneSelector').selectedIndex].text;
-            
-            const prompt = `Tu es un conseiller économique militaire impitoyable et sarcastique dans un univers de science-fiction (style Dawn of Victory). 
-            Analyse ces données financières d'un commandant :
-            - Investissement Total : ${investment}
-            - Marge Nette Mensuelle : ${netMonthly}
-            - ROI estimé en jours : ${roiDays}
-            - Zone d'opération : ${zone}
-            
-            Donne un avis tactique court (max 3 phrases). Si le ROI est bon, félicite-le. Si c'est mauvais (ROI > 300 jours ou déficit), sois critique.`;
-
-            const text = await callGemini(prompt);
-            
-            // UI Result
-            outputDiv.innerHTML = text;
-            btn.classList.remove('ai-loading');
-            btn.disabled = false;
-        });
+            } catch (e) {
+                console.warn("Erreur fetch prix WAX:", e);
+                btnFetchPrice.textContent = "❌ Err";
+                setTimeout(() => {
+                    btnFetchPrice.textContent = "🔄 Live";
+                }, 3000);
+            }
+        };
+        
+        if (btnFetchPrice) {
+            btnFetchPrice.addEventListener('click', fetchLiveWaxPrice);
+        }
 
         // Handler pour le Lore de Pack
         btnAiLore.addEventListener('click', async () => {
@@ -1897,6 +2093,10 @@
         window.onload = function() {
             initializeSliderDisplay();
             initializeBuildingTable(); // Init du tableau de batiments
+            
+            // Tentative de fetch auto au démarrage
+            fetchLiveWaxPrice();
+            
             calculate();
         };
 
