@@ -51,7 +51,7 @@
     <div id="app" class="w-full max-w-5xl space-y-8 mt-10">
 
         <h1 class="text-3xl font-bold text-center text-teal-400 mb-6">
-            Analyse du Volume de Déploiement Multi-Comptes <span class="text-yellow-400">(Ajustable)</span>
+            Analyse du Volume de Déploiement Multi-Comptes <span class="text-yellow-400">(Live WAX)</span>
         </h1>
 
         <!-- Section des Paramètres d'Entrée -->
@@ -618,19 +618,19 @@
         <div class="card p-6 rounded-xl border border-cyan-500/30 mt-8 relative overflow-hidden">
             <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500/50"></div>
             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-cyan-400 flex items-center mb-4">
-                <span class="mr-2">💼</span> 10. Connexion Wallet & Audit d'Actifs
+                <span class="mr-2">💼</span> 10. Connexion Wallet & Audit d'Actifs (Mode Réel)
             </h3>
             
             <p class="text-sm text-gray-400 mb-6">
                 Connectez votre WAX Cloud Wallet pour lister automatiquement vos cartes de bâtiments (NFTs) et calculer vos gains mensuels réels basés sur les prix actuels du marché.
-                <br><span class="text-xs text-cyan-300/60 italic">*Simulation : Entrez n'importe quel nom pour tester (ex: user.wam).*</span>
+                <br><span class="text-xs text-cyan-300/60 italic">*Ceci est une connexion API réelle via AtomicAssets pour la collection <strong>dovdivisions</strong>.*</span>
             </p>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="md:col-span-2">
                     <label for="walletAddressInput" class="block text-sm font-medium text-cyan-300 mb-1">Adresse Wallet WAX</label>
                     <div class="flex space-x-2">
-                        <input type="text" id="walletAddressInput" placeholder="ex: votrecompte.wam" class="input-style block w-full p-2.5 rounded-lg focus:ring-cyan-500 focus:border-cyan-500">
+                        <input type="text" id="walletAddressInput" placeholder="ex: user.wam" class="input-style block w-full p-2.5 rounded-lg focus:ring-cyan-500 focus:border-cyan-500">
                         <button id="btnScanWallet" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-6 rounded-lg transition-all duration-200 whitespace-nowrap">
                             Scanner le Portefeuille
                         </button>
@@ -758,6 +758,11 @@
     <script>
         // --- API GEMINI ---
         const apiKey = ""; // API Key injectée par l'environnement
+        
+        // --- CONFIGURATION WAX ---
+        const TARGET_COLLECTION_NAME = "dovdivisions";
+        const TARGET_SCHEMA_NAME = "warbuildings"; 
+        const ATOMIC_API_URL = "https://wax.api.atomicassets.io/atomicassets/v1/assets";
 
         // --- Globals for Ratio Calculation ---
         const BASE_PRICE_DOVX = 0.00528552;
@@ -780,43 +785,49 @@
         // 1. Définition des stats de base (Rareté/Niveau) qui s'appliquent à tous les types
         const TIER_STATS = [
             // Commun
-            { level: "L1", rarity: "Commun", prod: 5.40, cost: 0.4590, css: "rarity-commun" },
-            { level: "L2", rarity: "Commun", prod: 12.15, cost: 1.0328, css: "rarity-commun" },
-            { level: "L3", rarity: "Commun", prod: 30.38, cost: 2.58, css: "rarity-commun" },
-            { level: "L4", rarity: "Commun", prod: 83.53, cost: 7.10, css: "rarity-commun" },
+            { level: "L1", rarity: "Commun", rarityCode: "C", prod: 5.40, cost: 0.4590, css: "rarity-commun" },
+            { level: "L2", rarity: "Commun", rarityCode: "C", prod: 12.15, cost: 1.0328, css: "rarity-commun" },
+            { level: "L3", rarity: "Commun", rarityCode: "C", prod: 30.38, cost: 2.58, css: "rarity-commun" },
+            { level: "L4", rarity: "Commun", rarityCode: "C", prod: 83.53, cost: 7.10, css: "rarity-commun" },
             // Rare
-            { level: "L1", rarity: "Rare", prod: 16.20, cost: 1.38, css: "rarity-rare" },
-            { level: "L2", rarity: "Rare", prod: 36.45, cost: 3.10, css: "rarity-rare" },
-            { level: "L3", rarity: "Rare", prod: 91.13, cost: 7.75, css: "rarity-rare" },
-            { level: "L4", rarity: "Rare", prod: 250.59, cost: 21.30, css: "rarity-rare" },
+            { level: "L1", rarity: "Rare", rarityCode: "R", prod: 16.20, cost: 1.38, css: "rarity-rare" },
+            { level: "L2", rarity: "Rare", rarityCode: "R", prod: 36.45, cost: 3.10, css: "rarity-rare" },
+            { level: "L3", rarity: "Rare", rarityCode: "R", prod: 91.13, cost: 7.75, css: "rarity-rare" },
+            { level: "L4", rarity: "Rare", rarityCode: "R", prod: 250.59, cost: 21.30, css: "rarity-rare" },
             // Epic
-            { level: "L1", rarity: "Epic", prod: 48.60, cost: 4.13, css: "rarity-epic" },
-            { level: "L2", rarity: "Epic", prod: 109.35, cost: 9.29, css: "rarity-epic" },
-            { level: "L3", rarity: "Epic", prod: 273.38, cost: 23.24, css: "rarity-epic" },
-            { level: "L4", rarity: "Epic", prod: 751.78, cost: 63.90, css: "rarity-epic" },
+            { level: "L1", rarity: "Epic", rarityCode: "E", prod: 48.60, cost: 4.13, css: "rarity-epic" },
+            { level: "L2", rarity: "Epic", rarityCode: "E", prod: 109.35, cost: 9.29, css: "rarity-epic" },
+            { level: "L3", rarity: "Epic", rarityCode: "E", prod: 273.38, cost: 23.24, css: "rarity-epic" },
+            { level: "L4", rarity: "Epic", rarityCode: "E", prod: 751.78, cost: 63.90, css: "rarity-epic" },
             // Legendary
-            { level: "L1", rarity: "Legendary", prod: 145.80, cost: 12.39, css: "rarity-legendary" },
-            { level: "L2", rarity: "Legendary", prod: 328.05, cost: 27.88, css: "rarity-legendary" },
-            { level: "L3", rarity: "Legendary", prod: 820.13, cost: 69.71, css: "rarity-legendary" },
-            { level: "L4", rarity: "Legendary", prod: 2255.34, cost: 191.70, css: "rarity-legendary" },
+            { level: "L1", rarity: "Legendary", rarityCode: "L", prod: 145.80, cost: 12.39, css: "rarity-legendary" },
+            { level: "L2", rarity: "Legendary", rarityCode: "L", prod: 328.05, cost: 27.88, css: "rarity-legendary" },
+            { level: "L3", rarity: "Legendary", rarityCode: "L", prod: 820.13, cost: 69.71, css: "rarity-legendary" },
+            { level: "L4", rarity: "Legendary", rarityCode: "L", prod: 2255.34, cost: 191.70, css: "rarity-legendary" },
             // Supreme
-            { level: "L1", rarity: "Supreme", prod: 2255.34, cost: 191.70, css: "rarity-supreme" }
+            { level: "L1", rarity: "Supreme", rarityCode: "S", prod: 2255.34, cost: 191.70, css: "rarity-supreme" }
         ];
 
-        // 2. Définition des types de bâtiments
+        // 2. Définition des types de bâtiments et leurs suffixes techniques
         const BUILDING_TYPES = [
-            { name: "Fuel Refinery", type: "DOV-F" },
-            { name: "Health Factory", type: "DOV-H" },
-            { name: "Repair Factory", type: "DOV-R" },
-            { name: "Supply Factory", type: "DOV-S" }
+            { name: "Fuel Refinery", type: "DOV-F", suffix: "FUEL" },
+            { name: "Health Factory", type: "DOV-H", suffix: "HEALTH" },
+            { name: "Repair Factory", type: "DOV-R", suffix: "REPAIR" },
+            { name: "Supply Factory", type: "DOV-S", suffix: "SUPPLY" }
         ];
 
         // 3. Génération de la liste complète (17 tiers * 4 types = 68 items)
         let BUILDING_DATA = [];
         BUILDING_TYPES.forEach(typeObj => {
             TIER_STATS.forEach(tier => {
+                // Construction du nom technique: {RarityLetter}_F{Level}_PRODUCER_{TypeSuffix}
+                // Ex: Common Supply L1 -> C_F1_PRODUCER_SUPPLY
+                const levelNum = tier.level.replace('L', ''); // L1 -> 1
+                const technicalName = `${tier.rarityCode}_F${levelNum}_PRODUCER_${typeObj.suffix}`;
+                
                 BUILDING_DATA.push({
-                    name: `${tier.level} ${typeObj.name}`,
+                    name: `${tier.level} ${typeObj.name}`, // Nom d'affichage
+                    technicalName: technicalName, // Nom de la carte sur la blockchain
                     type: typeObj.type,
                     rarity: tier.rarity,
                     prodPerHour: tier.prod,
@@ -1012,7 +1023,7 @@
                 tr.innerHTML = `
                     <td class="p-3 font-semibold ${building.cssClass}">
                         ${building.name} 
-                        <span class="text-xs opacity-70">(${building.rarity})</span>
+                        <span class="text-xs opacity-70 block">${building.technicalName}</span>
                     </td>
                     <td class="p-3 text-right">${formatUnits(building.dovxCost)}</td>
                     <td class="p-3 text-right text-blue-300 building-cost-wax" data-index="${index}">--</td>
@@ -1258,24 +1269,60 @@
         };
 
         // --------------------------------------------------------------------------
-        // --- LOGIQUE SECTION 10: WALLET SCANNER (SIMULATION) ---
+        // --- LOGIQUE SECTION 10: WALLET SCANNER (REAL API) ---
         // --------------------------------------------------------------------------
         
-        // Simule un appel API AtomicAssets
-        const mockFetchWalletAssets = async (walletName) => {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    // Pour la démo, on retourne un set d'assets aléatoires mais réalistes
-                    // correspondant aux noms dans BUILDING_DATA
-                    const mockAssets = [
-                        { name: "L2 Fuel Refinery", qty: 2 },
-                        { name: "L1 Health Factory", qty: 4 },
-                        { name: "L3 Repair Factory", qty: 1 },
-                        { name: "L4 Supply Factory", qty: 1 }
-                    ];
-                    resolve(mockAssets);
-                }, 1000); // 1 sec de délai pour faire "vrai"
-            });
+        // Fonction réelle API AtomicAssets
+        const fetchWalletAssets = async (walletName) => {
+            try {
+                // Construction de l'URL
+                let url = `${ATOMIC_API_URL}?owner=${walletName}&page=1&limit=1000`;
+                
+                // Filtre par collection si défini
+                if (TARGET_COLLECTION_NAME && TARGET_COLLECTION_NAME.trim() !== "") {
+                    url += `&collection_name=${TARGET_COLLECTION_NAME}`;
+                }
+                
+                 // Filtre par schema si défini (catégorie)
+                if (TARGET_SCHEMA_NAME && TARGET_SCHEMA_NAME.trim() !== "") {
+                    url += `&schema_name=${TARGET_SCHEMA_NAME}`;
+                }
+
+                console.log("Fetching:", url);
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Erreur réseau ou wallet invalide");
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                     alert("Erreur AtomicAssets: " + (data.message || "Inconnue"));
+                     return [];
+                }
+                
+                const assets = data.data;
+                const inventory = {}; // Map pour compter les items par nom
+
+                // Boucle sur tous les assets trouvés
+                assets.forEach(asset => {
+                    // On cherche le nom dans asset.data.name ou asset.name
+                    // C'est ce nom qui doit correspondre au technicalName (ex: C_F1_PRODUCER_SUPPLY)
+                    const name = asset.data?.name || asset.name; 
+                    if (name) {
+                        inventory[name] = (inventory[name] || 0) + 1;
+                    }
+                });
+                
+                // Transformation en format compatible avec le simulateur
+                return Object.keys(inventory).map(key => ({
+                    name: key,
+                    qty: inventory[key]
+                }));
+
+            } catch (error) {
+                console.error("Erreur Fetch:", error);
+                alert("Impossible de récupérer les assets. Vérifiez le nom du wallet ou votre connexion internet.");
+                return [];
+            }
         };
 
         const calculateWalletEarnings = (tokenPrices) => {
@@ -1289,7 +1336,9 @@
 
             scannedWalletData.forEach(asset => {
                 // Trouver les stats du batiment dans notre base de données
-                const buildingStats = BUILDING_DATA.find(b => b.name === asset.name);
+                // Le nom du NFT scanné doit correspondre au technicalName (ex: C_F1_PRODUCER_SUPPLY)
+                // OU au nom d'affichage pour la rétrocompatibilité (peu probable sur la blockchain avec ce nouveau format)
+                const buildingStats = BUILDING_DATA.find(b => b.technicalName === asset.name || b.name === asset.name);
 
                 if (buildingStats) {
                     // Calculs (identiques au tableau Section 9)
@@ -1312,15 +1361,23 @@
                     rowsHtml += `
                         <tr class="hover:bg-gray-800/30 transition-colors">
                             <td class="p-3">
-                                <span class="font-medium text-cyan-200">${asset.name}</span>
-                                <span class="text-xs text-gray-500 block">ROI individuel: ${formatUSD(monthlyMarginUsd, 2)}/mois</span>
+                                <span class="font-medium text-cyan-200">${buildingStats.name}</span>
+                                <span class="text-xs text-gray-500 block">ID: ${asset.name}</span>
+                                <span class="text-xs text-gray-400 block">ROI: ${formatUSD(monthlyMarginUsd, 2)}/mois</span>
                             </td>
                             <td class="p-3 text-center font-bold text-gray-300">${asset.qty}</td>
                             <td class="p-3 text-right text-green-400 font-bold text-lg">${formatUSD(assetTotalMonthlyUsd, 2)}</td>
                         </tr>
                     `;
+                } else {
+                     // Optionnel: Afficher les items non reconnus pour debug
+                     console.log("Item non reconnu dans le simulateur:", asset.name);
                 }
             });
+            
+            if (rowsHtml === '') {
+                rowsHtml = `<tr><td colspan="3" class="p-4 text-center text-gray-500 italic">Aucun bâtiment compatible trouvé.<br>Le scanner cherche des cartes nommées comme "C_F1_PRODUCER_SUPPLY".</td></tr>`;
+            }
 
             // Mise à jour du DOM
             walletAssetsBody.innerHTML = rowsHtml;
@@ -1338,8 +1395,8 @@
             btnScanWallet.textContent = "Scan en cours...";
             btnScanWallet.classList.add('opacity-75', 'cursor-wait');
             
-            // Appel Mock
-            scannedWalletData = await mockFetchWalletAssets(wallet);
+            // Appel API REEL
+            scannedWalletData = await fetchWalletAssets(wallet);
             
             // Récupération des prix actuels pour le calcul
             const sliderValue = parseInt(dovxPriceSlider.value);
