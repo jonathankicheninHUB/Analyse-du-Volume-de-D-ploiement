@@ -762,7 +762,13 @@
         // --- CONFIGURATION WAX ---
         const TARGET_COLLECTION_NAME = "dovdivisions";
         const TARGET_SCHEMA_NAME = "warbuildings"; 
-        const ATOMIC_API_URL = "https://wax.api.atomicassets.io/atomicassets/v1/assets";
+        // MODIFICATION: Utilisation d'une liste de endpoints pour plus de robustesse
+        const ATOMIC_ENDPOINTS = [
+            "https://wax.api.atomicassets.io/atomicassets/v1/assets",
+            "https://aa.wax.blacklizard.io/atomicassets/v1/assets",
+            "https://atomic.wax.eosrio.io/atomicassets/v1/assets",
+            "https://api.wax-aa.bountyblok.io/atomicassets/v1/assets"
+        ];
 
         // --- Globals for Ratio Calculation ---
         const BASE_PRICE_DOVX = 0.00528552;
@@ -1274,55 +1280,81 @@
         
         // Fonction réelle API AtomicAssets
         const fetchWalletAssets = async (walletName) => {
-            try {
-                // Construction de l'URL
-                let url = `${ATOMIC_API_URL}?owner=${walletName}&page=1&limit=1000`;
-                
-                // Filtre par collection si défini
-                if (TARGET_COLLECTION_NAME && TARGET_COLLECTION_NAME.trim() !== "") {
-                    url += `&collection_name=${TARGET_COLLECTION_NAME}`;
-                }
-                
-                 // Filtre par schema si défini (catégorie)
-                if (TARGET_SCHEMA_NAME && TARGET_SCHEMA_NAME.trim() !== "") {
-                    url += `&schema_name=${TARGET_SCHEMA_NAME}`;
-                }
+            // Liste de endpoints pour la redondance
+            const endpoints = ATOMIC_ENDPOINTS;
 
-                console.log("Fetching:", url);
-                const response = await fetch(url);
-                if (!response.ok) throw new Error("Erreur réseau ou wallet invalide");
-                
-                const data = await response.json();
-                
-                if (!data.success) {
-                     alert("Erreur AtomicAssets: " + (data.message || "Inconnue"));
-                     return [];
-                }
-                
-                const assets = data.data;
-                const inventory = {}; // Map pour compter les items par nom
-
-                // Boucle sur tous les assets trouvés
-                assets.forEach(asset => {
-                    // On cherche le nom dans asset.data.name ou asset.name
-                    // C'est ce nom qui doit correspondre au technicalName (ex: C_F1_PRODUCER_SUPPLY)
-                    const name = asset.data?.name || asset.name; 
-                    if (name) {
-                        inventory[name] = (inventory[name] || 0) + 1;
-                    }
-                });
-                
-                // Transformation en format compatible avec le simulateur
-                return Object.keys(inventory).map(key => ({
-                    name: key,
-                    qty: inventory[key]
-                }));
-
-            } catch (error) {
-                console.error("Erreur Fetch:", error);
-                alert("Impossible de récupérer les assets. Vérifiez le nom du wallet ou votre connexion internet.");
-                return [];
+            // Paramètres communs
+            let queryParams = `?owner=${walletName}&page=1&limit=1000`;
+             // Filtre par collection si défini
+            if (TARGET_COLLECTION_NAME && TARGET_COLLECTION_NAME.trim() !== "") {
+                queryParams += `&collection_name=${TARGET_COLLECTION_NAME}`;
             }
+             // Filtre par schema si défini (catégorie)
+            if (TARGET_SCHEMA_NAME && TARGET_SCHEMA_NAME.trim() !== "") {
+                queryParams += `&schema_name=${TARGET_SCHEMA_NAME}`;
+            }
+
+            // Boucle de tentative sur les différents nœuds
+            for (let i = 0; i < endpoints.length; i++) {
+                const endpoint = endpoints[i];
+                const url = `${endpoint}${queryParams}`;
+
+                try {
+                    console.log(`Tentative de connexion au nœud ${i + 1}/${endpoints.length}: ${endpoint}`);
+                    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+
+                    if (!response.ok) {
+                         // Si c'est une 429 ou 500, on continue, sinon on arrête peut-être ?
+                         // Dans le doute, on log et on essaie le suivant
+                        console.warn(`Erreur nœud ${endpoint}: ${response.status} ${response.statusText}`);
+                        continue;
+                    }
+
+                    const data = await response.json();
+                    
+                    if (!data.success) {
+                        console.warn(`API Error sur ${endpoint}:`, data.message);
+                        continue;
+                    }
+
+                    // Si on arrive ici, c'est que ça a marché !
+                    console.log("Succès de récupération des données !");
+                    
+                    // Traitement des données
+                    const assets = data.data;
+                    const inventory = {}; 
+
+                    assets.forEach(asset => {
+                        let name = asset.data?.name;
+                        if (!name && asset.template && asset.template.immutable_data) {
+                            name = asset.template.immutable_data.name;
+                        }
+                        if (!name) {
+                            name = asset.name;
+                        }
+                        if (name) {
+                            name = name.trim();
+                            inventory[name] = (inventory[name] || 0) + 1;
+                        }
+                    });
+
+                    const result = Object.keys(inventory).map(key => ({
+                        name: key,
+                        qty: inventory[key]
+                    }));
+
+                    console.log("Inventaire consolidé:", result);
+                    return result;
+
+                } catch (error) {
+                    console.warn(`Échec de connexion au nœud ${endpoint}:`, error);
+                    // On continue à la prochaine itération de la boucle
+                }
+            }
+            
+            // Si on sort de la boucle sans avoir retourné, c'est que tout a échoué
+            alert("Impossible de contacter l'API WAX. Tous les nœuds publics semblent inaccessibles ou bloqués par votre réseau. \nEssayez de désactiver votre VPN ou AdBlock.");
+            return [];
         };
 
         const calculateWalletEarnings = (tokenPrices) => {
@@ -1333,14 +1365,16 @@
             let totalMonthlyWax = 0;
             let totalMonthlyUsd = 0;
             let rowsHtml = '';
+            
+            console.log("--- Début du calcul des gains Wallet ---");
 
             scannedWalletData.forEach(asset => {
                 // Trouver les stats du batiment dans notre base de données
-                // Le nom du NFT scanné doit correspondre au technicalName (ex: C_F1_PRODUCER_SUPPLY)
-                // OU au nom d'affichage pour la rétrocompatibilité (peu probable sur la blockchain avec ce nouveau format)
                 const buildingStats = BUILDING_DATA.find(b => b.technicalName === asset.name || b.name === asset.name);
 
                 if (buildingStats) {
+                    console.log(`Correspondance trouvée: ${asset.name} -> ${buildingStats.name}`);
+                    
                     // Calculs (identiques au tableau Section 9)
                     const hourlyCostDovx = buildingStats.dovxCost;
                     const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
@@ -1371,12 +1405,12 @@
                     `;
                 } else {
                      // Optionnel: Afficher les items non reconnus pour debug
-                     console.log("Item non reconnu dans le simulateur:", asset.name);
+                     console.log("Item non reconnu dans le simulateur (ignoré):", asset.name);
                 }
             });
             
             if (rowsHtml === '') {
-                rowsHtml = `<tr><td colspan="3" class="p-4 text-center text-gray-500 italic">Aucun bâtiment compatible trouvé.<br>Le scanner cherche des cartes nommées comme "C_F1_PRODUCER_SUPPLY".</td></tr>`;
+                rowsHtml = `<tr><td colspan="3" class="p-4 text-center text-gray-500 italic">Aucun bâtiment compatible trouvé.<br>Le scanner cherche des cartes nommées comme "C_F1_PRODUCER_SUPPLY".<br>(Vérifiez la console F12 pour voir les noms trouvés).</td></tr>`;
             }
 
             // Mise à jour du DOM
