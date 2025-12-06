@@ -614,7 +614,7 @@
             </div>
         </div>
 
-        <!-- NOUVELLE SECTION 10: CONNEXION WALLET & AUDIT -->
+        <!-- SECTION 10: CONNEXION WALLET & AUDIT -->
         <div class="card p-6 rounded-xl border border-cyan-500/30 mt-8 relative overflow-hidden">
             <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500/50"></div>
             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-cyan-400 flex items-center mb-4">
@@ -677,6 +677,78 @@
                 </div>
             </div>
         </div>
+
+        <!-- NOUVELLE SECTION 11: CRÉATEUR DE PACK BÂTIMENTS -->
+        <div class="card p-6 rounded-xl border border-emerald-500/30 mt-8 relative overflow-hidden">
+             <div class="absolute top-0 right-0 w-1 h-full bg-emerald-500/50"></div>
+            <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-emerald-400 flex items-center mb-4">
+                <span class="mr-2">🏗️</span> 11. Créateur de Pack Bâtiment & Outil (Simulator)
+            </h3>
+            
+            <p class="text-sm text-gray-400 mb-6">
+                Concevez un pack personnalisé contenant des bâtiments et un outil d'amélioration de la production (Multiplicateur).
+                Analysez immédiatement la rentabilité pour un investisseur potentiel.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Choix du Bâtiment -->
+                <div>
+                    <label for="packBuildingSelect" class="block text-sm font-medium result-label">Type de Bâtiment</label>
+                    <select id="packBuildingSelect" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 appearance-none text-sm">
+                        <!-- Rempli par JS -->
+                    </select>
+                </div>
+                <!-- Quantité -->
+                <div>
+                    <label for="packBuildingQty" class="block text-sm font-medium result-label">Quantité de Bâtiments</label>
+                    <input type="number" id="packBuildingQty" value="1" min="1" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" inputmode="numeric">
+                </div>
+                <!-- Multiplicateur -->
+                <div>
+                    <label for="packToolMultiplier" class="block text-sm font-medium result-label">Multiplicateur Outil (ex: 1.1 = +10%)</label>
+                    <input type="number" id="packToolMultiplier" value="1.00" step="0.01" min="1.00" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" inputmode="decimal">
+                </div>
+                <!-- Prix du Pack -->
+                <div>
+                    <label for="packBuildingPrice" class="block text-sm font-medium result-label">Prix Vente du Pack ($ USD)</label>
+                    <input type="number" id="packBuildingPrice" value="50.00" step="0.01" min="0" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" inputmode="decimal">
+                </div>
+            </div>
+
+            <!-- RÉSULTATS DU PACK -->
+            <div class="bg-emerald-900/10 rounded-xl p-4 border border-emerald-500/20">
+                <h4 class="text-emerald-300 font-semibold mb-4 border-b border-emerald-500/20 pb-2">Analyse de Rentabilité du Pack</h4>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Production Boostée -->
+                    <div>
+                        <p class="text-xs text-gray-400">Production Totale Journalière (Boostée)</p>
+                        <p id="packBuildingProd" class="text-xl font-bold text-white mt-1">--</p>
+                        <p class="text-xs text-gray-500" id="packBuildingProdBase">Base: --</p>
+                    </div>
+
+                     <!-- Coût Opérationnel -->
+                     <div>
+                        <p class="text-xs text-gray-400">Coût Fonctionnement Journalier</p>
+                        <p id="packBuildingOpEx" class="text-xl font-bold text-red-300 mt-1">--</p>
+                    </div>
+
+                    <!-- Marge Mensuelle -->
+                    <div>
+                        <p class="text-xs text-gray-400">Rendement Mensuel Net ($)</p>
+                        <p id="packBuildingMonthlyNet" class="text-2xl font-bold text-emerald-400 mt-1">--</p>
+                    </div>
+
+                    <!-- ROI -->
+                    <div>
+                        <p class="text-xs text-gray-400">ROI (Retour sur Investissement)</p>
+                        <p id="packBuildingRoi" class="text-xl font-bold text-yellow-400 mt-1">--</p>
+                         <p id="packBuildingRoiDays" class="text-xs text-gray-500">-- Jours</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
 
         <div class="text-xs text-gray-500 text-center pt-4 pb-8">
             *Les coûts de combat sont basés sur la colonne 'Combat Cost' et sont divisés par 4 pour les quatre jetons de coût distincts (DOV-H, R, S, F).
@@ -891,6 +963,19 @@
         const walletMonthlyUsdEl = document.getElementById('walletMonthlyUsd');
         const walletAssetsBody = document.getElementById('walletAssetsBody');
         
+        // Elements Section 11 (Pack Bâtiments)
+        const packBuildingSelect = document.getElementById('packBuildingSelect');
+        const packBuildingQtyInput = document.getElementById('packBuildingQty');
+        const packToolMultiplierInput = document.getElementById('packToolMultiplier');
+        const packBuildingPriceInput = document.getElementById('packBuildingPrice');
+        const packBuildingProdEl = document.getElementById('packBuildingProd');
+        const packBuildingProdBaseEl = document.getElementById('packBuildingProdBase');
+        const packBuildingOpExEl = document.getElementById('packBuildingOpEx');
+        const packBuildingMonthlyNetEl = document.getElementById('packBuildingMonthlyNet');
+        const packBuildingRoiEl = document.getElementById('packBuildingRoi');
+        const packBuildingRoiDaysEl = document.getElementById('packBuildingRoiDays');
+
+        
         let scannedWalletData = []; // Stocke les données simulées du wallet
 
 
@@ -910,6 +995,8 @@
         // Initialisation du tableau des bâtiments
         const initializeBuildingTable = () => {
             buildingsTableBody.innerHTML = '';
+            // On vide le selecteur du pack batiment aussi
+            if(packBuildingSelect) packBuildingSelect.innerHTML = '';
             
             // On récupère la valeur du filtre
             const filterValue = buildingTypeFilter.value;
@@ -938,6 +1025,14 @@
                     </td>
                 `;
                 buildingsTableBody.appendChild(tr);
+
+                // Populate Pack Building Selector (Section 11)
+                if(packBuildingSelect) {
+                    const opt = document.createElement('option');
+                    opt.value = index;
+                    opt.textContent = `${building.name} (${building.rarity})`;
+                    packBuildingSelect.appendChild(opt);
+                }
             });
             
             // Ajout des listeners pour les quantités
@@ -1107,6 +1202,9 @@
              if(scannedWalletData.length > 0) {
                 calculateWalletEarnings(tokenPrices);
              }
+
+             // IMPORTANT : Calculer le Pack Bâtiment (Section 11)
+             calculateBuildingPackResults(tokenPrices);
         };
         
         const updateBuildingTotals = () => {
@@ -1256,6 +1354,76 @@
             btnScanWallet.classList.remove('opacity-75', 'cursor-wait');
         });
 
+        // --------------------------------------------------------------------------
+        // --- LOGIQUE SECTION 11: CALCULATEUR DE PACK BATIMENT (NEW) ---
+        // --------------------------------------------------------------------------
+        const calculateBuildingPackResults = (tokenPrices) => {
+            const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
+
+            const selectedIndex = parseInt(packBuildingSelect.value);
+            const building = BUILDING_DATA[selectedIndex];
+            const qty = Math.max(1, parseInt(packBuildingQtyInput.value) || 1);
+            const multiplier = Math.max(0, parseFloat(packToolMultiplierInput.value) || 1);
+            const pricePackUsd = parseFloat(packBuildingPriceInput.value) || 0;
+
+            if (!building) return;
+
+            // 1. Prod
+            const baseDailyProd = building.prodPerHour * 24 * qty;
+            const totalDailyProd = baseDailyProd * multiplier;
+
+            // 2. Revenue (Production vendue au prix TU)
+            const dailyRevenueWax = totalDailyProd * newPriceCostToken;
+            
+            // 3. OpEx (Coût Opérationnel en DOVX)
+            // Le coût ne change pas avec le multiplicateur, il dépend du nombre de batiments
+            const hourlyCostDovx = building.dovxCost;
+            const dailyCostDovx = hourlyCostDovx * 24 * qty;
+            const dailyOpExWax = dailyCostDovx * newPriceDovX;
+
+            // 4. Marge Nette
+            const dailyNetWax = dailyRevenueWax - dailyOpExWax;
+            const dailyNetUsd = dailyNetWax * priceWaxUsd;
+            const monthlyNetUsd = dailyNetUsd * 30;
+
+            // 5. ROI
+            let roiDays = Infinity;
+            if (dailyNetUsd > 0 && pricePackUsd > 0) {
+                roiDays = pricePackUsd / dailyNetUsd;
+            } else if (pricePackUsd === 0 && dailyNetUsd > 0) {
+                roiDays = 0; // Gratuit et rentable
+            }
+
+            const roiPercentMonthly = (pricePackUsd > 0) ? (monthlyNetUsd / pricePackUsd) : 0;
+
+            // --- UI Update ---
+            if(packBuildingProdEl) packBuildingProdEl.textContent = formatUnits(totalDailyProd) + ' TU';
+            if(packBuildingProdBaseEl) packBuildingProdBaseEl.textContent = `Base: ${formatUnits(baseDailyProd)} TU (x${multiplier})`;
+            
+            if(packBuildingOpExEl) packBuildingOpExEl.textContent = formatWAX(dailyOpExWax, 4);
+            
+            if(packBuildingMonthlyNetEl) {
+                packBuildingMonthlyNetEl.textContent = formatUSD(monthlyNetUsd, 2);
+                packBuildingMonthlyNetEl.classList.remove('text-emerald-400', 'text-red-400');
+                packBuildingMonthlyNetEl.classList.add(monthlyNetUsd >= 0 ? 'text-emerald-400' : 'text-red-400');
+            }
+
+            if(packBuildingRoiEl) {
+                 if (roiDays === Infinity && dailyNetUsd <= 0) {
+                     packBuildingRoiEl.textContent = "Non Rentable";
+                     packBuildingRoiEl.classList.add('text-red-400');
+                 } else {
+                     packBuildingRoiEl.textContent = formatPercent(roiPercentMonthly, 2) + " / mois";
+                     packBuildingRoiEl.classList.remove('text-red-400');
+                     packBuildingRoiEl.classList.add('text-yellow-400');
+                 }
+            }
+
+            if(packBuildingRoiDaysEl) {
+                if(roiDays === Infinity) packBuildingRoiDaysEl.textContent = "-- Jours";
+                else packBuildingRoiDaysEl.textContent = formatUnits(roiDays) + " Jours pour ROI";
+            }
+        };
 
 
         // --------------------------------------------------------------------------
@@ -1308,7 +1476,7 @@
             // APPEL À LA LOGIQUE DU PACK DESIGN (Section 8)
             calculatePackDesign(tokenPrices);
             
-            // APPEL À LA LOGIQUE DES BATIMENTS (Section 9)
+            // APPEL À LA LOGIQUE DES BATIMENTS (Section 9) + WALLET (10) + PACK BATIMENT (11)
             updateBuildingTable(tokenPrices);
             
             // --- Calculs du Volume (Sections 2-7) ---
@@ -1608,11 +1776,12 @@
         const inputsToWatch = [
             zoneSelector, packDesignZoneSelector, dovxPriceSlider, priceWaxUsdInput, 
             numberOfAccountsInput, divisionsPerAccountInput, numberOfPacksInput, 
-            divisionsPerPackInput, pricePerPackUsdInput, packDesignPriceUsdInput
+            divisionsPerPackInput, pricePerPackUsdInput, packDesignPriceUsdInput,
+            packBuildingSelect, packBuildingQtyInput, packToolMultiplierInput, packBuildingPriceInput // New inputs
         ];
 
         inputsToWatch.forEach(input => {
-            input.addEventListener('input', calculate);
+            if(input) input.addEventListener('input', calculate); // Check if input exists (Section 11 elements)
         });
 
         // Lancement initial au chargement
