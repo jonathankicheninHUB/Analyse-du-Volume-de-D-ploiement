@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulateur Économique Dawn of Victory (Réel)</title>
+    <title>Simulateur Économique Dawn of Victory (Réel - Live Alcor)</title>
     <!-- Chargement de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -44,7 +44,7 @@
             color: #9ca3af;
         }
 
-        /* Animation pour le chargement AI */
+        /* Animation pour le chargement AI et Arbitrage */
         @keyframes pulse-purple {
             0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); }
@@ -850,20 +850,29 @@
             </div>
         </div>
         
-        <!-- NOUVELLE SECTION 13: ARBITRAGE DOVX (était masquée) -->
+        <!-- NOUVELLE SECTION 13: ARBITRAGE DOVX ET OUTIL LP -->
         <div id="unitSimulatorSection" class="card p-6 rounded-xl border border-purple-500/30 mt-8 relative overflow-hidden">
             <div class="absolute top-0 left-0 w-1 h-full bg-purple-500/50"></div>
             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-purple-400 flex items-center mb-4">
-                <span class="mr-2">📈</span> 13. Outil d'Arbitrage et d'Échange de DOVX
+                <span class="mr-2">📈</span> 13. Outil d'Arbitrage et de Liquidité (LP) DOVX
             </h3>
             
-            <p class="text-sm text-gray-400 mb-6">
+            <!-- SOUS-SECTION ARBITRAGE -->
+            <h4 class="text-lg font-semibold text-gray-300 mt-4 mb-3">13.1 Analyse d'Arbitrage (Live Alcor)</h4>
+
+            <p class="text-sm text-gray-400 mb-4">
                 Comparez l'échange direct DOVX/WAX (prix du marché) avec l'échange indirect DOVX -> [Autre Jeton] -> WAX.
-                Un gain positif indique une opportunité d'arbitrage ou un rendement supérieur.
                 <br><span id="dovxCurrentWaxPriceDisplay" class="text-xs text-purple-300/60 italic font-semibold">*Prix DOVX/WAX actuel (Section 1): --*</span>
+                <span class="text-xs text-red-300 italic block mt-1">**NOTE : Les prix sont récupérés en temps réel via l'API Alcor Exchange.**</span>
             </p>
 
-            <div class="overflow-x-auto">
+            <div class="mb-4">
+                <button id="btnArbitrageScan" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg transition-all duration-200 shadow-lg shadow-purple-600/20 flex items-center justify-center text-sm">
+                    <span class="mr-2">🔄</span> Analyser les Swaps (Arbitrage)
+                </button>
+            </div>
+
+            <div class="overflow-x-auto mb-8">
                 <table class="min-w-full divide-y divide-gray-700 text-sm">
                     <thead>
                         <tr class="text-left text-gray-400 bg-gray-800/50">
@@ -879,6 +888,50 @@
                 </table>
             </div>
 
+            <!-- SOUS-SECTION CALCULATEUR LP -->
+            <h4 class="text-lg font-semibold text-gray-300 mt-4 mb-3 border-t border-gray-700 pt-4">13.2 Calculateur de Dépôt de Liquidité (LP)</h4>
+            <p class="text-sm text-gray-400 mb-4">
+                Calculez les quantités de jetons nécessaires pour créer de nouveaux pools basés sur les prix définis en Section 1.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- Pool 1: DOVX / WAX -->
+                <div class="p-4 bg-purple-900/30 rounded-lg border border-purple-700">
+                    <h5 class="font-bold text-purple-300 mb-2">Pool A: DOVX / WAX</h5>
+                    <label for="lpDovxWaxAmount" class="block text-xs text-gray-400">Montant de WAX à déposer</label>
+                    <input type="number" id="lpDovxWaxAmount" value="1000" min="0" class="input-style mt-1 block w-full p-2 rounded-lg focus:ring-purple-500" inputmode="numeric">
+                    
+                    <p class="text-sm mt-3 font-semibold">Quantité de DOVX Requise :</p>
+                    <p id="lpDovxWaxRequired" class="text-xl text-white font-bold mt-1">--</p>
+                    <p class="text-xs text-gray-400 italic">Prix DOVX Cible: 1 WAX = <span id="lpDovxWaxPriceSpan">--</span> DOVX</p>
+                </div>
+
+                <!-- Pool 2: TU / WAX -->
+                <div class="p-4 bg-red-900/30 rounded-lg border border-red-700">
+                    <h5 class="font-bold text-red-300 mb-2">Pool B: TU / WAX</h5>
+                    <label for="lpTuWaxAmount" class="block text-xs text-gray-400">Montant de WAX à déposer</label>
+                    <input type="number" id="lpTuWaxAmount" value="1000" min="0" class="input-style mt-1 block w-full p-2 rounded-lg focus:ring-red-500" inputmode="numeric">
+                    
+                    <p class="text-sm mt-3 font-semibold">Quantité de TU Requise :</p>
+                    <p id="lpTuWaxRequired" class="text-xl text-white font-bold mt-1">--</p>
+                    <p class="text-xs text-gray-400 italic">Prix TU Cible: 1 WAX = <span id="lpTuWaxPriceSpan">--</span> TU</p>
+                </div>
+
+                <!-- Pool 3: DOVX / TU -->
+                <div class="md:col-span-2 p-4 bg-teal-900/30 rounded-lg border border-teal-700">
+                    <h5 class="font-bold text-teal-300 mb-2">Pool C: DOVX / TU (Lien Économique)</h5>
+                    <label for="lpDovxTuAmount" class="block text-xs text-gray-400">Montant de DOVX à déposer</label>
+                    <input type="number" id="lpDovxTuAmount" value="100000" min="0" class="input-style mt-1 block w-full p-2 rounded-lg focus:ring-teal-500" inputmode="numeric">
+                    
+                    <p class="text-sm mt-3 font-semibold">Quantité de TU Requise :</p>
+                    <p id="lpDovxTuRequired" class="text-xl text-white font-bold mt-1">--</p>
+                    <p class="text-xs text-gray-400 italic">Prix TU Cible: 1 DOVX = <span id="lpDovxTuPriceSpan">--</span> TU</p>
+                    <p class="text-xs text-gray-400 italic mt-2">Prix DOVX Cible: 1 TU = <span id="lpTuDovxPriceSpan">--</span> DOVX</p>
+                </div>
+
+            </div>
+
         </div>
 
         <div class="text-xs text-gray-500 text-center pt-4 pb-8">
@@ -888,15 +941,13 @@
     </div>
 
     <script type="module">
-        // Import seulement si nécessaire (j'ai retiré toutes les dépendances Firebase/Firestore)
-        // Les imports ci-dessous sont gardés car ils ne dépendent pas de Firebase/Auth pour fonctionner.
-        
         // --- API GEMINI ---
         const apiKey = ""; // API Key injectée par l'environnement
         
-        // --- CONFIGURATION WAX ---
+        // --- CONFIGURATION WAX & ALCOR ---
         const TARGET_COLLECTION_NAME = "dovdivisions";
         const TARGET_SCHEMA_NAME = "warbuildings"; 
+        
         // Liste des endpoints AtomicAssets (pour redondance)
         const ATOMIC_ENDPOINTS = [
             "https://wax.api.atomicassets.io/atomicassets/v1/assets",
@@ -911,11 +962,13 @@
              "https://atomic.wax.eosrio.io/atomicmarket/v1/sales"
         ];
         
+        // Endpoint Alcor principal
+        const ALCOR_API_URL = "https://wax.alcor.exchange/api/markets";
+
         // --- Constantes de prix et de ratio fixes (Basé sur les données utilisateur) ---
         const REFERENCE_DOVX = 0.00528552;
         const REFERENCE_TU = 0.00045262;
-        // Ratio exact DOVX / TU (Utilisé pour calculer TU si DOVX change)
-        const DOVX_TO_TU_RATIO = REFERENCE_DOVX / REFERENCE_TU; // 11.678310003093155
+        const DOVX_TO_TU_RATIO = REFERENCE_DOVX / REFERENCE_TU; 
         
         // --- Globals for Price Storage ---
         let currentPriceDovX = REFERENCE_DOVX;
@@ -932,15 +985,82 @@
         
         const COST_TOKENS = ["DOV-H", "DOV-R", "DOV-S", "DOV-F"];
 
-        // --- DONNÉES SWAP ALCOR (SIMULÉES) ---
-        // Simule le prix d'autres tokens en WAX. Dans une application réelle, ceci serait récupéré via l'API Alcor.
-        const SWAP_PAIRS = [
-            { token: "KOGS", priceWax: 100.00, dovxRatio: 1 / 100000 }, // Prix WAX/DOVX simulé 0.00001
-            { token: "TLM", priceWax: 0.50, dovxRatio: 0.00528552 / 0.50 }, // Exemple TLM = 0.5 WAX, DOVX = 0.0052 WAX. Ratio = 0.01057 DOVX/TLM
-            { token: "DHC", priceWax: 2.00, dovxRatio: 0.00528552 / 2.00 }, // Exemple DHC = 2 WAX, Ratio = 0.00264 DOVX/DHC
-            { token: "SHING", priceWax: 0.001, dovxRatio: 0.00528552 / 0.001 } // Exemple SHING = 0.001 WAX, Ratio = 5.28 DOVX/SHING
+        // --- DONNÉES SWAP ALCOR (LIVE API) ---
+        // Noms des marchés Alcor pour les paires TARGET/WAX et DOVX/TARGET
+        const ARBITRAGE_PAIRS_CONFIG = [
+            // Target Token: TLM (alien.worlds)
+            { token: "TLM", marketWax: "TLM-alien.worlds_WAX-eosio.token", marketDovx: "DOVX-dov.token_TLM-alien.worlds" }, 
+            // Target Token: KOGS (kogs.token)
+            { token: "KOGS", marketWax: "KOGS-kogs.token_WAX-eosio.token", marketDovx: "DOVX-dov.token_KOGS-kogs.token" }, 
+            // Target Token: DHC (dhctokenmint)
+            { token: "DHC", marketWax: "DHC-dhctokenmint_WAX-eosio.token", marketDovx: "DOVX-dov.token_DHC-dhctokenmint" }, 
+            // Target Token: SHING (shingtoken)
+            { token: "SHING", marketWax: "SHING-shingtoken_WAX-eosio.token", marketDovx: "DOVX-dov.token_SHING-shingtoken" } 
         ];
 
+        /**
+         * Fonction utilitaire pour interroger l'API Alcor avec backoff exponentiel.
+         * @param {string} endpoint - Endpoint Alcor (e.g., /v1/markets/[market_name])
+         * @returns {Promise<Object|null>}
+         */
+        const fetchAlcorMarketPrice = async (marketName) => {
+            const url = `${ALCOR_API_URL}/${marketName}`;
+            const maxRetries = 3;
+            let delay = 500;
+
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, { method: 'GET', mode: 'cors' });
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Retourne le last_price directement
+                        if (data && data.last_price) {
+                            return parseFloat(data.last_price);
+                        }
+                        // Si le marché n'existe pas ou la réponse est vide
+                        return null; 
+                    }
+                } catch (error) {
+                    // console.log(`Tentative ${i + 1} échouée pour ${marketName}.`);
+                }
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; 
+            }
+            return null;
+        };
+
+        // --- NOUVELLE FONCTION DE RÉCUPÉRATION DE PRIX ALCOR EN TEMPS RÉEL ---
+        const fetchAlcorPrices = async () => {
+            const results = [];
+            const fetchPromises = ARBITRAGE_PAIRS_CONFIG.map(async (pair) => {
+                // 1. Récupère le prix du Target Token en WAX (Ex: TLM/WAX)
+                const priceTargetWax = await fetchAlcorMarketPrice(pair.marketWax);
+                
+                // 2. Récupère le prix de DOVX en Target Token (Ex: DOVX/TLM)
+                const priceDovxTarget = await fetchAlcorMarketPrice(pair.marketDovx);
+                
+                let impliedWaxValue = null;
+                let isMissingData = false;
+                
+                if (priceTargetWax !== null && priceDovxTarget !== null) {
+                    // Calcul de la valeur implicite de 1 DOVX en WAX (P_DOVX/T * P_T/WAX)
+                    impliedWaxValue = priceDovxTarget * priceTargetWax;
+                } else {
+                    isMissingData = true;
+                }
+
+                results.push({
+                    token: pair.token,
+                    priceTargetWax: priceTargetWax,
+                    priceDovxTarget: priceDovxTarget,
+                    impliedWaxValue: impliedWaxValue,
+                    isMissingData: isMissingData
+                });
+            });
+
+            await Promise.all(fetchPromises);
+            return results;
+        };
 
         // --- DONNÉES BATIMENTS (BUILDINGS) ---
         const TIER_STATS = [
@@ -1014,7 +1134,6 @@
             { name: "HQ", totalTuCost: 752000, dovxReward: 64884 }, 
             { name: "STAKING", totalTuCost: 650000, dovxReward: 50000 },
         ];
-
 
         // --- Fonctions de Formatage (Utility Functions) ---
 
@@ -1136,6 +1255,22 @@
 
         const dovxCurrentWaxPriceDisplay = document.getElementById('dovxCurrentWaxPriceDisplay');
         const swapAnalysisBody = document.getElementById('swapAnalysisBody');
+        // RÉFÉRENCE DOM AJOUTÉE
+        const btnArbitrageScan = document.getElementById('btnArbitrageScan');
+        
+        // NOUVELLES RÉFÉRENCES DOM POUR CALCULATEUR LP (Section 13.2)
+        const lpDovxWaxAmountInput = document.getElementById('lpDovxWaxAmount');
+        const lpDovxWaxRequiredEl = document.getElementById('lpDovxWaxRequired');
+        const lpDovxWaxPriceSpanEl = document.getElementById('lpDovxWaxPriceSpan');
+
+        const lpTuWaxAmountInput = document.getElementById('lpTuWaxAmount');
+        const lpTuWaxRequiredEl = document.getElementById('lpTuWaxRequired');
+        const lpTuWaxPriceSpanEl = document.getElementById('lpTuWaxPriceSpan');
+
+        const lpDovxTuAmountInput = document.getElementById('lpDovxTuAmount');
+        const lpDovxTuRequiredEl = document.getElementById('lpDovxTuRequired');
+        const lpDovxTuPriceSpanEl = document.getElementById('lpDovxTuPriceSpan');
+        const lpTuDovxPriceSpanEl = document.getElementById('lpTuDovxPriceSpan');
         
         
         let scannedWalletData = []; // Stocke les données réelles/simulées du wallet (Section 10)
@@ -1226,7 +1361,7 @@
             "Uncommon F4-De-Havilland-Mosquito B.IV 24,3000 108,1000% 25,0000% 108,1000% 75,0000% 100,0000% combat",
             "Uncommon F1-Avro-Lancaster-Mark I 0,9000 100,0000% 22,0000% 100,0000% 72,0000% 100,0000% combat",
             "Uncommon F2-Avro-Lancaster-Mark I 2,7000 100,9000% 23,0000% 100,9000% 73,0000% 100,0000% combat",
-            "Uncommon F3-Avro-Lancaster-Mark I 8,1000 102,7000% 24,0000% 102,7000% 74,0000% 100,0000% combat",
+            "Uncommon F3-Avro-Lancaster-Mark I 2,7000 102,7000% 24,0000% 102,7000% 74,0000% 100,0000% combat",
             "Uncommon F4-Avro-Lancaster-Mark I 24,3000 108,1000% 25,0000% 108,1000% 75,0000% 100,0000% combat",
             "Rare F1-USS-Texas 3,6000 22,0000% 22,0000% 22,0000% 22,0000% 100,0000% combat",
             "Rare F2-USS-Texas 10,8000 23,0000% 23,0000% 23,0000% 23,0000% 100,0000% combat",
@@ -1636,7 +1771,7 @@
         };
 
         // Calcule l'analyse de swap (Section 13)
-        const calculateSwapAnalysis = (tokenPrices) => {
+        const calculateSwapAnalysis = async (tokenPrices) => {
             const { newPriceDovX } = tokenPrices;
             
             if (dovxCurrentWaxPriceDisplay) {
@@ -1648,56 +1783,137 @@
                 return;
             }
 
-            let html = '';
+            // --- État de chargement ---
+            if(swapAnalysisBody) swapAnalysisBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-purple-400">Analyse des marchés Alcor en cours (Live API)...</td></tr>`;
+            if(btnArbitrageScan) {
+                btnArbitrageScan.textContent = "Analyse en cours...";
+                btnArbitrageScan.disabled = true;
+                // Ajout de la classe de loading pour l'animation
+                btnArbitrageScan.classList.add('ai-loading'); 
+            }
             
-            SWAP_PAIRS.forEach(pair => {
-                // Simuler que le prix du token cible en WAX est P_Target (soit pair.priceWax)
-                // Simuler que le prix du DOVX en token cible est R (soit 1 DOVX = R * Target)
-                
-                // Calcul du prix du token cible R en utilisant le prix DOVX * Actuel / prix Target Simulé
-                // Si 1 TLM = 0.5 WAX, et 1 DOVX = 0.005285 WAX
-                // 1 DOVX doit s'échanger contre 0.005285 / 0.5 = 0.01057 TLM
-                // (Ce ratio est le marché Alcor qui est notre baseline 'fair value')
-                const fairDovxTargetRatio = newPriceDovX / pair.priceWax;
-                
-                // Arbitrage: On simule une opportunité de 10% sur ce ratio pour 1 token
-                // Pour trouver la valeur implicite d'UN DOVX en WAX en passant par le token cible:
-                // Si 1 DOVX -> 0.012 TLM (Arbitrage de 13% vs 0.01057)
-                // Valeur Implicite = (DOVX échangé) * (Prix WAX du token cible)
-                // Ici, on va simuler que l'échange offre 10% de plus que la valeur directe.
+            // --- Appel de la fonction d'API réel ---
+            const liveSwapData = await fetchAlcorPrices();
+            
+            let html = '';
+            let hasValidData = false;
 
-                // Simuler une opportunité d'Arbitrage (e.g., Target Token est surévalué par rapport à DOVX sur une paire)
-                // Nous allons supposer que 1 DOVX achète T * 1.10 (pour un gain de 10%) du Target Token sur l'échange.
-                // Donc le ratio simulé sur la paire serait: fairDovxTargetRatio * (1 + ArbitragePercent)
-                const ARBITRAGE_GAIN = 0.10; // Simuler un gain de 10% (0.1) ou une perte de -5% (-0.05)
-                const realDovxTargetRatio = pair.token === "TLM" ? fairDovxTargetRatio * (1 + ARBITRAGE_GAIN) : fairDovxTargetRatio;
-                
-                // Valeur Implicite d'UN DOVX via l'échange indirect (DOVX -> Target -> WAX)
-                // C'est la quantité de Target obtenue par 1 DOVX (realDovxTargetRatio) multipliée par le prix WAX du Target.
-                const impliedWaxValue = realDovxTargetRatio * pair.priceWax;
-                
-                // Gain/Perte Arbitrage en pourcentage (comparé au prix DOVX/WAX direct)
+            liveSwapData.forEach(pair => {
+                let livePriceWaxText = '--';
+                let impliedWaxValueText = '--';
+                let arbitrageGainText = '--';
+                let actionText = 'Données manquantes';
+                let colorClass = 'text-gray-500';
+
+                if (pair.isMissingData) {
+                    html += `
+                        <tr class="hover:bg-gray-800/40">
+                            <td class="p-3 font-semibold text-purple-200">DOVX / ${pair.token}</td>
+                            <td class="p-3 text-right text-gray-500">${pair.priceTargetWax === null ? 'WAX/T non trouvé' : formatWAX(pair.priceTargetWax, 6)}</td>
+                            <td class="p-3 text-right text-purple-300">--</td>
+                            <td class="p-3 text-right text-red-400">
+                                --
+                                <span class="text-xs text-red-500 block">Marché DOVX/${pair.token} non trouvé</span>
+                            </td>
+                        </tr>
+                    `;
+                    return; // Passe à la prochaine paire
+                }
+
+                hasValidData = true;
+                const livePriceWax = pair.priceTargetWax;
+                const impliedWaxValue = pair.impliedWaxValue;
                 const arbitrageGainRatio = (impliedWaxValue / newPriceDovX) - 1;
                 
-                const colorClass = arbitrageGainRatio > 0.01 ? 'text-green-400 font-extrabold' : (arbitrageGainRatio < -0.01 ? 'text-red-400' : 'text-gray-400');
-                const actionText = arbitrageGainRatio > 0.01 ? 'Swap Recommandé' : (arbitrageGainRatio < -0.01 ? 'Éviter le Swap' : 'Indifférent');
+                livePriceWaxText = formatWAX(livePriceWax, 6);
+                impliedWaxValueText = formatWAX(impliedWaxValue, 8);
+                arbitrageGainText = formatPercent(arbitrageGainRatio, 2);
+
+                if (arbitrageGainRatio > 0.005) { // Seuil de 0.5% pour considérer l'arbitrage
+                    colorClass = 'text-green-400 font-extrabold';
+                    actionText = 'OPPORTUNITÉ D\'ARBITRAGE';
+                } else if (arbitrageGainRatio < -0.005) {
+                    colorClass = 'text-red-400';
+                    actionText = 'RENDEMENT INFÉRIEUR (Éviter)';
+                } else {
+                    colorClass = 'text-gray-400';
+                    actionText = 'Taux de marché (Indifférent)';
+                }
 
                 html += `
                     <tr class="hover:bg-gray-800/40">
                         <td class="p-3 font-semibold text-purple-200">DOVX / ${pair.token}</td>
-                        <td class="p-3 text-right">${formatWAX(pair.priceWax, 4)}</td>
-                        <td class="p-3 text-right text-purple-300">${formatWAX(impliedWaxValue, 8)}</td>
+                        <td class="p-3 text-right">${livePriceWaxText}</td>
+                        <td class="p-3 text-right text-purple-300">${impliedWaxValueText}</td>
                         <td class="p-3 text-right ${colorClass}">
-                            ${formatPercent(arbitrageGainRatio, 2)} 
+                            ${arbitrageGainText} 
                             <span class="text-xs text-gray-500 block">${actionText}</span>
                         </td>
                     </tr>
                 `;
             });
+
+            if (!hasValidData) {
+                html = `<tr><td colspan="4" class="p-4 text-center text-red-400">❌ Aucune donnée de marché Alcor n'a pu être récupérée pour les paires DOVX/[Target]/WAX.</td></tr>`;
+            }
             
             if(swapAnalysisBody) swapAnalysisBody.innerHTML = html;
+            
+            // --- Fin de chargement ---
+            if(btnArbitrageScan) {
+                btnArbitrageScan.textContent = "🔄 Analyser les Swaps (Arbitrage)";
+                btnArbitrageScan.disabled = false;
+                btnArbitrageScan.classList.remove('ai-loading');
+            }
         };
 
+        // Calcule le Dépôt de Liquidité (LP)
+        const calculateLPDeposit = (tokenPrices) => {
+            const { newPriceDovX, newPriceCostToken } = tokenPrices;
+            
+            // Prix Unitaires:
+            const priceDovxInWax = newPriceDovX; // Prix DOVX en WAX (Ex: 0.00528 WAX)
+            const priceTuInWax = newPriceCostToken; // Prix TU en WAX (Ex: 0.00045 WAX)
+            
+            // Ratio DOVX/TU
+            let priceDovxInTu = 0;
+            let priceTuInDovx = 0;
+            if (priceTuInWax > 0) {
+                 priceDovxInTu = priceDovxInWax / priceTuInWax; // Prix d'un DOVX en TU
+                 priceTuInDovx = 1 / priceDovxInTu; // Prix d'un TU en DOVX
+            }
+            
+            // 1. Pool A: DOVX / WAX
+            const waxAmountA = parseFloat(lpDovxWaxAmountInput.value) || 0;
+            let dovxRequiredA = 0;
+            if (priceDovxInWax > 0) {
+                 // Quantité DOVX = Quantité WAX / Prix DOVX en WAX (P_D/W)
+                dovxRequiredA = waxAmountA / priceDovxInWax;
+            }
+
+            if(lpDovxWaxRequiredEl) lpDovxWaxRequiredEl.textContent = formatUnits(dovxRequiredA) + ' DOVX';
+            if(lpDovxWaxPriceSpanEl) lpDovxWaxPriceSpanEl.textContent = formatUnits(1 / priceDovxInWax) + ' DOVX';
+            
+            // 2. Pool B: TU / WAX
+            const waxAmountB = parseFloat(lpTuWaxAmountInput.value) || 0;
+            let tuRequiredB = 0;
+            if (priceTuInWax > 0) {
+                // Quantité TU = Quantité WAX / Prix TU en WAX (P_T/W)
+                tuRequiredB = waxAmountB / priceTuInWax;
+            }
+
+            if(lpTuWaxRequiredEl) lpTuWaxRequiredEl.textContent = formatUnits(tuRequiredB) + ' TU';
+            if(lpTuWaxPriceSpanEl) lpTuWaxPriceSpanEl.textContent = formatUnits(1 / priceTuInWax) + ' TU';
+
+            // 3. Pool C: DOVX / TU
+            const dovxAmountC = parseFloat(lpDovxTuAmountInput.value) || 0;
+            let tuRequiredC = dovxAmountC * priceDovxInTu; // Quantité TU = Quantité DOVX * Prix DOVX en TU
+
+            if(lpDovxTuRequiredEl) lpDovxTuRequiredEl.textContent = formatUnits(tuRequiredC) + ' TU';
+            if(lpDovxTuPriceSpanEl) lpDovxTuPriceSpanEl.textContent = formatUnits(priceDovxInTu);
+            if(lpTuDovxPriceSpanEl) lpTuDovxPriceSpanEl.textContent = formatUnits(priceTuInDovx);
+
+        };
 
         // --- Fonctions d'Appel API Réelles ---
 
@@ -1998,7 +2214,17 @@
 
         if (btnScanMarket) btnScanMarket.addEventListener('click', calculateMarketDeals);
 
-
+        // NOUVELLE FONCTION: Gère le clic sur le bouton d'arbitrage (Section 13)
+        const handleArbitrageScan = () => {
+             const tokenPrices = { 
+                newPriceDovX: currentPriceDovX, 
+                newPriceCostToken: currentPriceCostToken, 
+                priceWaxUsd: currentPriceWaxUsd 
+            };
+            calculateSwapAnalysis(tokenPrices);
+            calculateLPDeposit(tokenPrices); // Update LP calculator as well
+        };
+        
         // --- Fonction de Calcul Principale (Volume + Master) ---
         const calculate = () => {
 
@@ -2048,7 +2274,7 @@
             // --- Appel aux fonctions dépendantes des prix des tokens ---
             calculatePackDesign(tokenPrices);
             updateBuildingTable(tokenPrices); 
-            calculateSwapAnalysis(tokenPrices); // NOUVEAU: Appel de l'analyse de swap
+            calculateLPDeposit(tokenPrices); // Call LP calculator on main calculation
 
             // --- Calculs du Volume (Sections 2-7) ---
 
@@ -2286,6 +2512,11 @@
             if (packDesignZoneSelector) packDesignZoneSelector.addEventListener('change', calculate);
             if (packDesignPriceUsdInput) packDesignPriceUsdInput.addEventListener('input', calculate);
 
+            // Événements pour le calculateur LP (Section 13.2)
+            if (lpDovxWaxAmountInput) lpDovxWaxAmountInput.addEventListener('input', calculate);
+            if (lpTuWaxAmountInput) lpTuWaxAmountInput.addEventListener('input', calculate);
+            if (lpDovxTuAmountInput) lpDovxTuAmountInput.addEventListener('input', calculate);
+
             // Événement AI Lore
             if (btnAiLore) {
                 btnAiLore.addEventListener('click', async () => {
@@ -2310,6 +2541,11 @@
                         btn.disabled = false;
                     }
                 });
+            }
+
+            // NOUVEL ÉVÉNEMENT : Arbitrage Scan (Section 13)
+            if (btnArbitrageScan) {
+                 btnArbitrageScan.addEventListener('click', handleArbitrageScan);
             }
         };
 
@@ -2348,6 +2584,9 @@
             
             // Appeler calculate() au chargement pour afficher les valeurs par défaut
             calculate();
+
+            // Initialiser l'analyse de swap au chargement également (similaire aux autres sections)
+            handleArbitrageScan();
             
             console.log("Simulateur chargé et déverrouillé.");
 
