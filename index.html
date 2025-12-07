@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulateur Économique Dawn of Victory</title>
+    <title>Simulateur Économique Dawn of Victory (Réel)</title>
     <!-- Chargement de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -23,6 +23,10 @@
             border: 1px solid #30363d;
             color: #ffffff;
         }
+        .input-readonly {
+            background-color: #24292f; /* Darker background for calculated field */
+            color: #90ee90; /* Light green for calculated values */
+        }
         .result-label {
             color: #9e9e9e;
         }
@@ -30,6 +34,16 @@
             font-weight: 700;
             color: #c9d1d9;
         }
+        /* Style du Toggler de prix (OBSOLÈTE, MAIS LAISSÉ POUR LE LOOK SI RÉUTILISÉ) */
+        #labelModeUsd.active, #labelModeWax.active {
+            background-color: #3f6212; /* lime-900/50 */
+            color: #d9f99d; /* lime-200 */
+        }
+        #labelModeUsd:not(.active), #labelModeWax:not(.active) {
+            background-color: transparent;
+            color: #9ca3af;
+        }
+
         /* Animation pour le chargement AI */
         @keyframes pulse-purple {
             0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
@@ -79,12 +93,14 @@
 </head>
 <body class="text-white p-4 sm:p-8 min-h-screen flex justify-center items-start">
 
-    <div id="app" class="w-full max-w-5xl space-y-8 mt-10">
+    <div id="app" class="w-full max-w-5xl space-y-8 mt-10 relative">
 
         <h1 class="text-3xl font-bold text-center text-teal-400 mb-6">
             Analyse du Volume de Déploiement Multi-Comptes <span class="text-yellow-400">(Simulateur Manuel)</span>
         </h1>
 
+        <!-- CONTENU DU SIMULATEUR (maintenant directement visible) -->
+        
         <!-- Section des Paramètres d'Entrée -->
         <div class="card p-6 rounded-xl space-y-6">
             <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-blue-300">
@@ -127,10 +143,12 @@
 
             <!-- Investment Packs and Price (VOLUME) -->
             <div class="border-t border-gray-800 pt-4">
-                <h3 class="text-sm font-medium result-label mb-3 text-lime-300">
-                    Volume de Packs Achetés (Base pour Sections 2-7)
+                <h3 class="text-sm font-medium result-label mb-3 text-lime-300 flex items-center justify-between">
+                    <span>Volume de Packs Achetés (Base pour Sections 2-7)</span>
+                    <!-- Indicateur du prix principal (WAX) -->
+                    <span class="text-xs text-gray-400">Prix Principal en WAX (USD calculé)</span>
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <!-- Nombre de Packs -->
                     <div>
                         <label for="numberOfPacks" class="block text-sm font-medium result-label">Nombre de Packs Achetés (Volume)</label>
@@ -142,23 +160,20 @@
                         <label for="divisionsPerPack" class="block text-sm font-medium result-label">Divisions par Pack Designé/Acheté</label>
                         <input type="number" id="divisionsPerPack" value="10" min="0" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-lime-500 focus:border-lime-500" inputmode="numeric">
                     </div>
-
-                    <!-- Prix par Pack (USD) - CHAMP D'ENTRÉE -->
+                    
+                    <!-- Prix par Pack (WAX) - CHAMP WAX -->
                     <div>
-                        <label for="pricePerPackUsd" class="block text-sm font-medium result-label">Prix par Pack (en USD $) [Volume]</label>
-                        <input type="text" id="pricePerPackUsd" value="50,00" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-lime-500 focus:border-lime-500" inputmode="decimal">
+                        <label for="pricePerPackWax" class="block text-sm font-medium result-label">Prix par Pack (en WAX)</label>
+                        <input type="text" id="pricePerPackWax" value="1000,00" class="input-style mt-1 block w-full p-2.5 rounded-lg focus:ring-lime-500 focus:border-lime-500" inputmode="decimal">
                     </div>
-                    <!-- Prix par Pack (WAX) - AUTOMATIQUE -->
-                    <div>
-                        <label for="pricePerPackWax" class="block text-sm font-medium result-label">Prix par Pack (en WAX) [Volume Auto]</label>
-                        <input type="text" id="pricePerPackWax" value="--,-" readonly class="input-style mt-1 block w-full p-2.5 rounded-lg text-lime-400" title="Calculé: Prix USD / WAX/USD" inputmode="decimal">
-                    </div>
+                    
+                    <!-- Le champ USD a été retiré. -->
                 </div>
                 
-                 <!-- Total Divisions Achetées (NOUVEL AFFICHAGE) -->
+                <!-- Total Divisions Achetées (NOUVEL AFFICHAGE) -->
                 <div class="mt-4 p-3 bg-indigo-900/30 rounded-lg border border-indigo-700">
-                     <p class="text-sm result-label">Total Divisions Achetées (Capacité)</p>
-                     <p id="resultTotalDivisionsPurchased" class="text-xl mt-1 text-indigo-300 font-bold">--</p>
+                    <p class="text-sm result-label">Total Divisions Achetées (Capacité)</p>
+                    <p id="resultTotalDivisionsPurchased" class="text-xl mt-1 text-indigo-300 font-bold">--</p>
                 </div>
             </div>
             
@@ -179,7 +194,7 @@
                 <div class="p-3 bg-gray-900/50 rounded-lg border-l-4 border-red-500/50">
                     <label for="priceCostTokenCalculated" class="block text-sm font-medium text-red-400 mb-2">2. Prix d'un TU en WAX (Ratio Calculé)</label>
                     <!-- VALEUR INITIALE BASÉE SUR LA RÉFÉRENCE UTILISATEUR: 0.00045262 WAX -->
-                    <input type="text" id="priceCostTokenCalculated" value="0,00045262" readonly class="input-style block w-full p-2.5 rounded-lg text-red-400 font-bold text-lg bg-red-900/20" title="Calculé: DOVX / Ratio">
+                    <input type="text" id="priceCostTokenCalculated" value="0,00045262" readonly class="input-style block w-full p-2.5 rounded-lg text-red-400 font-bold text-lg bg-red-900/20" title="Calculé: DOVX / Ratio" inputmode="decimal">
                     <p id="ratioDisplay" class="text-xs text-gray-400 mt-1">Ratio appliqué: DOVX / 11.6783100 (basé sur 0.00528552 / 0.00045262)</p>
                 </div>
             </div>
@@ -250,7 +265,7 @@
                 </div>
             </div>
             
-             <!-- Marge Nette USD (Affiche seule pour bien la mettre en évidence) -->
+            <!-- Marge Nette USD (Affiche seule pour bien la mettre en évidence) -->
             <div class="mt-6 pt-4 border-t border-gray-700">
                 <p class="text-sm result-label">Marge/Déficit Nette (USD $)</p>
                 <p id="resultNetUsd" class="text-3xl mt-1 result-value">--</p>
@@ -261,7 +276,7 @@
         <div class="card p-6 rounded-xl">
             <h2 class="text-xl font-semibold border-b border-gray-700 pb-3 text-fuchsia-300 mb-6">
                 4. Projections en USD (Mois & Année)
-            </h2>
+            </h2 >
 
             <!-- LIGNE 1: Marge Nette -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -340,7 +355,7 @@
 
         <!-- SECTION Consommation Nominale des Jetons de Coût -->
         <div class="card p-6 rounded-xl">
-             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-indigo-300">
+            <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-indigo-300">
                 6. Consommation Détaillée des Jetons de Coût (TU)
             </h3>
             
@@ -363,7 +378,7 @@
                     </tbody>
                     <tfoot>
                         <tr class="border-t border-yellow-500/50 bg-gray-800 font-bold">
-                            <td class="p-3 text-yellow-300">TOTAL (Toutes Divisions/24h)</td>
+                            <td class="p-3 text-yellow-300" colspan="3">TOTAL (Toutes Divisions/24h)</td>
                             <td class="p-3 text-right text-yellow-300" id="totalUnitsConsumedBase">--</td>
                             <td class="p-3 text-right text-yellow-300" id="totalUnitsConsumedDailySum">--</td>
                             <td class="p-3 text-right text-yellow-300" id="totalWaxCostBase">--</td>
@@ -381,7 +396,7 @@
                     <p class="text-xs text-gray-400 mt-1">Total TU requis pour tous les déploiements.</p>
                 </div>
 
-                 <div class="p-4 bg-red-900/40 rounded-lg">
+                <div class="p-4 bg-red-900/40 rounded-lg">
                     <p class="text-sm font-bold text-gray-300">Coût Total WAX (Journalier)</p>
                     <p id="totalWaxCostDaily" class="text-2xl mt-1 text-red-300 font-extrabold">--</p>
                     <p class="text-xs text-gray-400 mt-1">Coût WAX équivalent du besoin en TU.</p>
@@ -405,7 +420,7 @@
 
         <!-- Section 7: RÉPARTITION DES REVENUS DES PACKS (Volume) -->
         <div class="card p-6 rounded-xl">
-             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-yellow-300">
+            <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-yellow-300">
                 7. Répartition des Revenus de Vente des Packs (Volume)
             </h3>
             
@@ -460,7 +475,7 @@
 
         <!-- Section 8: OUTIL DE CRÉATION ET ROI DES PACKS -->
         <div class="card p-6 rounded-xl border-4 border-dashed border-teal-500/50">
-             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-teal-400 flex items-center justify-between">
+            <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-teal-400 flex items-center justify-between">
                 <span>8. Outil de Création et ROI d'un Pack Designé</span>
                 <button id="btnAiLore" class="text-sm bg-teal-600/20 hover:bg-teal-600/40 text-teal-300 py-1 px-3 rounded border border-teal-500/50 transition-colors flex items-center space-x-1">
                     <span>✨ IA: Générer Lore</span>
@@ -521,7 +536,7 @@
                         <p id="designPackRoiDaily" class="text-xl mt-1 result-value text-pink-400">--</p>
                     </div>
                     
-                     <!-- Jours pour Break-Even -->
+                    <!-- Jours pour Break-Even -->
                     <div class="p-3 bg-gray-800 rounded-lg border border-pink-700">
                         <p class="text-sm result-label">Jours pour Break-Even</p>
                         <p id="designPackRoiDays" class="text-xl mt-1 result-value text-pink-400">--</p>
@@ -535,7 +550,7 @@
                 <h4 class="text-lg font-semibold text-blue-300 border-b border-gray-700 pb-2 mb-4">
                     Répartition du Cash Back (30% de la Vente du Pack)
                 </h4>
-                 <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
                     
                     <!-- Cash Back (USD) -->
                     <div class="p-3 bg-blue-900/30 rounded-lg">
@@ -626,7 +641,7 @@
             
             <p class="text-sm text-gray-400 mb-6">
                 Connectez votre WAX Cloud Wallet pour lister automatiquement vos cartes de bâtiments (NFTs) et calculer vos gains mensuels réels basés sur les prix actuels du marché.
-                <br><span class="text-xs text-cyan-300/60 italic">*Ceci est une connexion API réelle via AtomicAssets pour la collection <strong>dovdivisions</strong>.*</span>
+                <br><span class="text-xs text-cyan-300/60 italic">*Ceci utilise l'API AtomicAssets (connectée au réseau WAX) pour la collection <strong>dovdivisions</strong>.*</span>
             </p>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -688,7 +703,7 @@
 
         <!-- NOUVELLE SECTION 11: CRÉATEUR DE PACK BÂTIMENTS -->
         <div class="card p-6 rounded-xl border border-emerald-500/30 mt-8 relative overflow-hidden">
-             <div class="absolute top-0 right-0 w-1 h-full bg-emerald-500/50"></div>
+            <div class="absolute top-0 right-0 w-1 h-full bg-emerald-500/50"></div>
             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-emerald-400 flex items-center mb-4">
                 <span class="mr-2">🏗️</span> 11. Créateur de Pack Bâtiment & Outil (Simulator)
             </h3>
@@ -735,8 +750,8 @@
                         <p class="text-xs text-gray-500" id="packBuildingProdBase">Base: --</p>
                     </div>
 
-                     <!-- Coût Opérationnel -->
-                     <div>
+                    <!-- Coût Opérationnel -->
+                    <div>
                         <p class="text-xs text-gray-400">Coût Fonctionnement Journalier</p>
                         <p id="packBuildingOpEx" class="text-xl font-bold text-red-300 mt-1">--</p>
                     </div>
@@ -751,7 +766,7 @@
                     <div>
                         <p class="text-xs text-gray-400">ROI (Retour sur Investissement)</p>
                         <p id="packBuildingRoi" class="text-xl font-bold text-yellow-400 mt-1">--</p>
-                         <p id="packBuildingRoiDays" class="text-xs text-gray-500">-- Jours</p>
+                        <p id="packBuildingRoiDays" class="text-xs text-gray-500">-- Jours</p>
                     </div>
                 </div>
             </div>
@@ -761,24 +776,24 @@
                 <h4 class="text-lg font-semibold text-blue-300 border-b border-gray-700 pb-2 mb-4">
                     Répartition du Cash Back (30% de la Vente du Pack)
                 </h4>
-                 <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
                     
                     <!-- Cash Back (USD) -->
                     <div class="p-3 bg-blue-900/30 rounded-lg">
                         <p class="text-sm font-bold text-blue-300">Cash Back (USD $)</p>
-                        <p id="designPackCashBackUsd" class="text-xl mt-1 text-white">--</p>
+                        <p id="buildingPackCashBackUsd" class="text-xl mt-1 text-white">--</p>
                     </div>
 
                     <!-- Cash Back (WAX) -->
                     <div class="p-3 bg-blue-900/30 rounded-lg">
                         <p class="text-sm font-bold text-blue-300">Cash Back (WAX)</p>
-                        <p id="designPackCashBackWax" class="text-xl mt-1 text-white">--</p>
+                        <p id="buildingPackCashBackWax" class="text-xl mt-1 text-white">--</p>
                     </div>
                     
                     <!-- Prix Pack (WAX) -->
                     <div class="p-3 bg-gray-900/50 rounded-lg">
                         <p class="text-sm font-bold text-gray-400">Prix Pack (WAX)</p>
-                        <p id="designPackPriceWax" class="text-xl mt-1 text-lime-400">--</p>
+                        <p id="buildingPackPriceWax" class="text-xl mt-1 text-lime-400">--</p>
                     </div>
                 </div>
             </div>
@@ -787,10 +802,10 @@
 
         <!-- SECTION 12: SNIPER DE MARCHÉ (ATOMIC HUB) -->
         <div id="marketSniperSection" class="card p-6 rounded-xl border border-yellow-500/50 mt-8 relative overflow-hidden">
-             <!-- Scan Effect Overlay -->
-             <div id="scanOverlay" class="scan-overlay"></div>
-             
-             <div class="absolute top-0 right-0 w-16 h-16 bg-yellow-500/10 rounded-bl-full"></div>
+            <!-- Scan Effect Overlay -->
+            <div id="scanOverlay" class="scan-overlay"></div>
+            
+            <div class="absolute top-0 right-0 w-16 h-16 bg-yellow-500/10 rounded-bl-full"></div>
             
             <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-yellow-400 flex items-center mb-4">
                 <span class="mr-2">🎯</span> 12. Sniper de Marché (AtomicHub Live Deals)
@@ -799,22 +814,23 @@
             <p class="text-sm text-gray-400 mb-6">
                 Scannez le marché AtomicHub en temps réel pour trouver les bâtiments vendus en dessous de leur valeur de rendement.
                 Le ROI est calculé avec vos paramètres actuels (Prix Tokens & Coûts).
+                <br><span class="text-xs text-yellow-300/60 italic">*Ceci utilise l'API AtomicMarket (connectée au réseau WAX) pour la collection <strong>dovdivisions</strong>.*</span>
             </p>
 
             <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
-                 <button id="btnScanMarket" class="bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg shadow-yellow-600/20 flex items-center justify-center">
+                <button id="btnScanMarket" class="bg-yellow-600 hover:bg-yellow-500 text-black font-bold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg shadow-yellow-600/20 flex items-center justify-center">
                     <span class="mr-2">🔍</span> Scanner les Offres (ROI)
                 </button>
                 
                 <div class="flex items-center space-x-2 bg-gray-900 px-4 py-2 rounded-lg border border-gray-700">
-                     <span class="text-sm text-gray-400">Seuils Max ROI (Jours):</span>
-                     <input type="number" id="marketRoiFilter" value="300" class="bg-transparent border-none text-yellow-400 font-bold w-16 focus:ring-0 text-right">
+                    <span class="text-sm text-gray-400">Seuils Max ROI (Jours):</span>
+                    <input type="number" id="marketRoiFilter" value="300" class="bg-transparent border-none text-yellow-400 font-bold w-16 focus:ring-0 text-right">
                 </div>
             </div>
 
             <!-- RESULTATS DU SNIPER -->
             <div id="marketResultsContainer" class="hidden">
-                 <div class="overflow-x-auto max-h-[500px] overflow-y-auto bg-gray-900/50 rounded-lg border border-gray-700">
+                <div class="overflow-x-auto max-h-[500px] overflow-y-auto bg-gray-900/50 rounded-lg border border-gray-700">
                     <table class="min-w-full divide-y divide-gray-800 text-sm">
                         <thead class="bg-gray-800 text-gray-400 sticky top-0 z-10 shadow-md">
                             <tr>
@@ -833,43 +849,78 @@
                 <p class="text-xs text-gray-500 mt-2 text-right">*Les frais de marché ne sont pas inclus. DYOR.</p>
             </div>
         </div>
+        
+        <!-- NOUVELLE SECTION 13: ARBITRAGE DOVX (était masquée) -->
+        <div id="unitSimulatorSection" class="card p-6 rounded-xl border border-purple-500/30 mt-8 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-1 h-full bg-purple-500/50"></div>
+            <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-purple-400 flex items-center mb-4">
+                <span class="mr-2">📈</span> 13. Outil d'Arbitrage et d'Échange de DOVX
+            </h3>
+            
+            <p class="text-sm text-gray-400 mb-6">
+                Comparez l'échange direct DOVX/WAX (prix du marché) avec l'échange indirect DOVX -> [Autre Jeton] -> WAX.
+                Un gain positif indique une opportunité d'arbitrage ou un rendement supérieur.
+                <br><span id="dovxCurrentWaxPriceDisplay" class="text-xs text-purple-300/60 italic font-semibold">*Prix DOVX/WAX actuel (Section 1): --*</span>
+            </p>
 
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-700 text-sm">
+                    <thead>
+                        <tr class="text-left text-gray-400 bg-gray-800/50">
+                            <th class="p-3">Paire de Swap</th>
+                            <th class="p-3 text-right">Prix du Jeton Cible (en WAX)</th>
+                            <th class="p-3 text-right text-purple-300">Valeur Implicite de 1 DOVX (en WAX)</th>
+                            <th class="p-3 text-right text-yellow-300">Arbitrage / Gain (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800" id="swapAnalysisBody">
+                        <!-- Rempli par JS -->
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
 
         <div class="text-xs text-gray-500 text-center pt-4 pb-8">
             *Les coûts de combat sont basés sur la colonne 'Combat Cost' et sont divisés par 4 pour les quatre jetons de coût distincts (DOV-H, R, S, F).
         </div>
+
     </div>
 
-    <script>
+    <script type="module">
+        // Import seulement si nécessaire (j'ai retiré toutes les dépendances Firebase/Firestore)
+        // Les imports ci-dessous sont gardés car ils ne dépendent pas de Firebase/Auth pour fonctionner.
+        
         // --- API GEMINI ---
         const apiKey = ""; // API Key injectée par l'environnement
         
         // --- CONFIGURATION WAX ---
         const TARGET_COLLECTION_NAME = "dovdivisions";
         const TARGET_SCHEMA_NAME = "warbuildings"; 
-        // MODIFICATION: Utilisation d'une liste de endpoints pour plus de robustesse
+        // Liste des endpoints AtomicAssets (pour redondance)
         const ATOMIC_ENDPOINTS = [
             "https://wax.api.atomicassets.io/atomicassets/v1/assets",
             "https://aa.wax.blacklizard.io/atomicassets/v1/assets",
             "https://atomic.wax.eosrio.io/atomicassets/v1/assets",
             "https://api.wax-aa.bountyblok.io/atomicassets/v1/assets"
         ];
-        // ENDPOINTS SPECIFIQUES MARKET (Souvent les mêmes base URL mais path diff)
+        // Liste des endpoints AtomicMarket
         const ATOMIC_MARKET_ENDPOINTS = [
             "https://wax.api.atomicassets.io/atomicmarket/v1/sales",
              "https://aa.wax.blacklizard.io/atomicmarket/v1/sales",
              "https://atomic.wax.eosrio.io/atomicmarket/v1/sales"
         ];
         
-        // --- Constantes de prix et de ratio fixes ---
+        // --- Constantes de prix et de ratio fixes (Basé sur les données utilisateur) ---
         const REFERENCE_DOVX = 0.00528552;
         const REFERENCE_TU = 0.00045262;
-        const DOVX_TO_TU_RATIO = REFERENCE_DOVX / REFERENCE_TU; // Exact ratio calculation: 11.678310003093155
+        // Ratio exact DOVX / TU (Utilisé pour calculer TU si DOVX change)
+        const DOVX_TO_TU_RATIO = REFERENCE_DOVX / REFERENCE_TU; // 11.678310003093155
         
-        // --- Globals for Price Storage (Maintenant manuel, utilisation de 'let' pour éviter la redéclaration) ---
-        let currentPriceDovX = 0;
-        let currentPriceCostToken = 0; // Calculated by ratio
-        let currentPriceWaxUsd = 0.05; // Default value, updated by Coingecko/Manual Input
+        // --- Globals for Price Storage ---
+        let currentPriceDovX = REFERENCE_DOVX;
+        let currentPriceCostToken = REFERENCE_TU;
+        let currentPriceWaxUsd = 0.05;
 
         // Constantes de temps et de distribution
         const DAYS_IN_MONTH = 30;
@@ -881,9 +932,17 @@
         
         const COST_TOKENS = ["DOV-H", "DOV-R", "DOV-S", "DOV-F"];
 
-        // --- DONNÉES BATIMENTS (BUILDINGS) - GÉNÉRATION AUTOMATIQUE ---
-        
-        // 1. Définition des stats de base (Rareté/Niveau) qui s'appliquent à tous les types
+        // --- DONNÉES SWAP ALCOR (SIMULÉES) ---
+        // Simule le prix d'autres tokens en WAX. Dans une application réelle, ceci serait récupéré via l'API Alcor.
+        const SWAP_PAIRS = [
+            { token: "KOGS", priceWax: 100.00, dovxRatio: 1 / 100000 }, // Prix WAX/DOVX simulé 0.00001
+            { token: "TLM", priceWax: 0.50, dovxRatio: 0.00528552 / 0.50 }, // Exemple TLM = 0.5 WAX, DOVX = 0.0052 WAX. Ratio = 0.01057 DOVX/TLM
+            { token: "DHC", priceWax: 2.00, dovxRatio: 0.00528552 / 2.00 }, // Exemple DHC = 2 WAX, Ratio = 0.00264 DOVX/DHC
+            { token: "SHING", priceWax: 0.001, dovxRatio: 0.00528552 / 0.001 } // Exemple SHING = 0.001 WAX, Ratio = 5.28 DOVX/SHING
+        ];
+
+
+        // --- DONNÉES BATIMENTS (BUILDINGS) ---
         const TIER_STATS = [
             // Commun
             { level: "L1", rarity: "Commun", rarityCode: "C", prod: 5.40, cost: 0.4590, css: "rarity-commun" },
@@ -905,11 +964,10 @@
             { level: "L2", rarity: "Legendary", rarityCode: "L", prod: 328.05, cost: 27.88, css: "rarity-legendary" },
             { level: "L3", rarity: "Legendary", rarityCode: "L", prod: 820.13, cost: 69.71, css: "rarity-legendary" },
             { level: "L4", rarity: "Legendary", rarityCode: "L", prod: 2255.34, cost: 191.70, css: "rarity-legendary" },
-            // Supreme
-            { level: "L1", rarity: "Supreme", rarityCode: "S", prod: 2255.34, cost: 191.70, css: "rarity-supreme" }
+            // Supreme (Single top tier)
+            { level: "L5", rarity: "Supreme", rarityCode: "S", prod: 6766.02, cost: 575.11, css: "rarity-supreme" } 
         ];
 
-        // 2. Définition des types de bâtiments et leurs suffixes techniques
         const BUILDING_TYPES = [
             { name: "Fuel Refinery", type: "DOV-F", suffix: "FUEL" },
             { name: "Health Factory", type: "DOV-H", suffix: "HEALTH" },
@@ -917,87 +975,26 @@
             { name: "Supply Factory", type: "DOV-S", suffix: "SUPPLY" }
         ];
 
-        // 3. Génération de la liste complète (17 tiers * 4 types = 68 items)
         let BUILDING_DATA = [];
         BUILDING_TYPES.forEach(typeObj => {
             TIER_STATS.forEach(tier => {
-                // Construction du nom technique: {RarityLetter}_F{Level}_PRODUCER_{TypeSuffix}
-                // Ex: Common Supply L1 -> C_F1_PRODUCER_SUPPLY
-                const levelNum = tier.level.replace('L', ''); // L1 -> 1
+                const levelNum = tier.level.replace('L', ''); 
                 const technicalName = `${tier.rarityCode}_F${levelNum}_PRODUCER_${typeObj.suffix}`;
                 
                 BUILDING_DATA.push({
-                    // MODIFICATION: F + niveau au lieu de L + niveau
-                    name: `F${levelNum} ${typeObj.name} (${tier.rarity})`, // Nom d'affichage AVEC Rareté
-                    technicalName: technicalName, // Nom de la carte sur la blockchain
+                    name: `F${levelNum} ${typeObj.name} (${tier.rarity})`,
+                    technicalName: technicalName,
                     type: typeObj.type,
                     rarity: tier.rarity,
                     prodPerHour: tier.prod,
                     dovxCost: tier.cost,
-                    cssClass: tier.css
+                    cssClass: tier.css,
+                    userQty: 0
                 });
             });
         });
-
-
-        /**
-         * Formate une valeur numérique en chaîne WAX avec un nombre défini de décimales.
-         */
-        const formatWAX = (value, decimales = 6) => {
-            if (isNaN(value) || !isFinite(value)) return '--';
-            return value.toLocaleString('fr-FR', {
-                minimumFractionDigits: decimales,
-                maximumFractionDigits: decimales
-            }) + ' WAX';
-        };
-
-        /**
-         * Formate une valeur numérique en USD ($) avec un nombre défini de décimales.
-         */
-        const formatUSD = (value, decimales = 4) => {
-            if (isNaN(value) || !isFinite(value)) return '--';
-            return value.toLocaleString('fr-FR', {
-                minimumFractionDigits: decimales,
-                maximumFractionDigits: decimales,
-                style: 'currency',
-                currency: 'USD',
-            });
-        };
-
-        /**
-         * Formate une valeur numérique en unités (nombre entier avec séparateur).
-         */
-        const formatUnits = (value) => {
-            if (isNaN(value) || !isFinite(value)) return '--';
-            const maxDigits = (value % 1 !== 0) ? 2 : 0;
-            return value.toLocaleString('fr-FR', { maximumFractionDigits: maxDigits });
-        };
         
-        /**
-         * Formate une valeur en pourcentage.
-         */
-        const formatPercent = (value, decimales = 2) => {
-            if (isNaN(value) || !isFinite(value)) return '--';
-            return (value * 100).toLocaleString('fr-FR', {
-                minimumFractionDigits: decimales,
-                maximumFractionDigits: decimales
-            }) + ' %';
-        };
-        
-        /**
-         * Convertit une chaîne de caractères française (avec virgule) en nombre flottant standard (avec point).
-         */
-        const parseFrenchFloat = (str) => {
-            if (!str) return NaN;
-            // Correction: Remplace la virgule par un point pour la conversion
-            const standardStr = str.toString().replace(',', '.');
-            return parseFloat(standardStr);
-        };
-        
-        // --------------------------------------------------------------------------
-
-        // Définition des données de base de l'économie (totalTuCost est le coût COMBINÉ des 4 jetons)
-        // Les valeurs ici représentent le coût/récompense pour UNE SEULE DIVISION/DÉPLOIEMENT.
+        // --- DONNÉES ZONES DE DÉPLOIEMENT (ZONE_DATA) ---
         const ZONE_DATA = [
             { name: "beach1", totalTuCost: 4640, dovxReward: 400 }, 
             { name: "beach2", totalTuCost: 27872, dovxReward: 2405 }, 
@@ -1018,24 +1015,77 @@
             { name: "STAKING", totalTuCost: 650000, dovxReward: 50000 },
         ];
 
-        // Éléments DOM
+
+        // --- Fonctions de Formatage (Utility Functions) ---
+
+        /** Formate en WAX */
+        const formatWAX = (value, decimales = 6) => {
+            if (isNaN(value) || !isFinite(value)) return '--';
+            return value.toLocaleString('fr-FR', {
+                minimumFractionDigits: decimales,
+                maximumFractionDigits: decimales
+            }) + ' WAX';
+        };
+
+        /** Formate en USD ($) */
+        const formatUSD = (value, decimales = 4) => {
+            if (isNaN(value) || !isFinite(value)) return '--';
+            return value.toLocaleString('fr-FR', {
+                minimumFractionDigits: decimales,
+                maximumFractionDigits: decimales,
+                style: 'currency',
+                currency: 'USD',
+            });
+        };
+
+        /** Formate en unités (nombre avec séparateur) */
+        const formatUnits = (value) => {
+            if (isNaN(value) || !isFinite(value)) return '--';
+            const maxDigits = (value % 1 !== 0) ? 2 : 0;
+            return value.toLocaleString('fr-FR', { maximumFractionDigits: maxDigits });
+        };
+        
+        /** Formate en pourcentage */
+        const formatPercent = (value, decimales = 2) => {
+            if (isNaN(value) || !isFinite(value)) return '--';
+            return (value * 100).toLocaleString('fr-FR', {
+                minimumFractionDigits: decimales,
+                maximumFractionDigits: decimales
+            }) + ' %';
+        };
+        
+        /** Convertit une chaîne française (virgule) en float */
+        const parseFrenchFloat = (str) => {
+            if (!str) return NaN;
+            const standardStr = str.toString().replace(',', '.');
+            return parseFloat(standardStr);
+        };
+        
+        /** Convertit une chaîne de pourcentage française (virgule + %) en décimal (ex: 100,0000% -> 1) */
+        const parseFrenchPercent = (str) => {
+             if (!str) return 0;
+             // Supprime le % et remplace la virgule par un point
+             const cleanedStr = str.toString().replace('%', '').trim().replace(',', '.');
+             const value = parseFloat(cleanedStr);
+             if (isNaN(value)) return 0;
+             // Divise par 100 pour obtenir le facteur (ex: 100 -> 1.0)
+             return value / 100;
+        };
+        
+
+        // --- Références DOM (Liste abrégée pour la clarté) ---
         const zoneSelector = document.getElementById('zoneSelector');
         const priceWaxUsdInput = document.getElementById('priceWaxUsd');
         const numberOfAccountsInput = document.getElementById('numberOfAccounts');
         const divisionsPerAccountInput = document.getElementById('divisionsPerAccount');
         const numberOfPacksInput = document.getElementById('numberOfPacks');
         const divisionsPerPackInput = document.getElementById('divisionsPerPack');
-        const pricePerPackUsdInput = document.getElementById('pricePerPackUsd'); 
-        const btnFetchPrice = document.getElementById('btnFetchPrice'); 
-
-        // NOUVEAUX ÉLÉMENTS MANUELS DE PRIX
-        const priceDovXManualInput = document.getElementById('priceDovXManual');
+        const pricePerPackWaxInput = document.getElementById('pricePerPackWax'); 
+        const dovxPriceManualInput = document.getElementById('priceDovXManual');
         const dovxPriceSlider = document.getElementById('dovxPriceSlider');
-        // ÉLÉMENT CALCULÉ DU PRIX TU
         const priceCostTokenCalculated = document.getElementById('priceCostTokenCalculated');
         const ratioDisplay = document.getElementById('ratioDisplay');
-        
-        // NOUVEAUX ÉLÉMENTS DU PACK DESIGNÉ
+        const btnFetchPrice = document.getElementById('btnFetchPrice'); 
         const packDesignZoneSelector = document.getElementById('packDesignZoneSelector');
         const packDesignPriceUsdInput = document.getElementById('packDesignPriceUsd');
         const designPackNetUsdElement = document.getElementById('designPackNetUsd');
@@ -1045,31 +1095,25 @@
         const designPackCashBackWaxElement = document.getElementById('designPackCashBackWax');
         const designPackPriceWaxElement = document.getElementById('designPackPriceWax');
         
-        // Elements IA
         const btnAiLore = document.getElementById('btnAiLore');
         const aiLoreOutput = document.getElementById('aiLoreOutput');
         const packNameInput = document.getElementById('packName');
         const packCompositionInput = document.getElementById('packComposition');
-
-        // Elements Section Batiments
         const buildingsTableBody = document.getElementById('buildingsTableBody');
+        const buildingTypeFilter = document.getElementById('buildingTypeFilter');
+        const section9RatesDisplay = document.getElementById('section9RatesDisplay');
         const userTotalTuDailyEl = document.getElementById('userTotalTuDaily');
         const userTotalRevenueWaxEl = document.getElementById('userTotalRevenueWax');
         const userTotalMarginWaxEl = document.getElementById('userTotalMarginWax'); 
         const userTotalRevenueUsdMonthlyEl = document.getElementById('userTotalRevenueUsdMonthly'); 
-        const buildingTypeFilter = document.getElementById('buildingTypeFilter');
-        const section9RatesDisplay = document.getElementById('section9RatesDisplay');
-
-        // Elements Section 10 (Wallet)
         const btnScanWallet = document.getElementById('btnScanWallet');
         const walletAddressInput = document.getElementById('walletAddressInput');
         const walletResultsContainer = document.getElementById('walletResultsContainer');
+        const walletAssetsBody = document.getElementById('walletAssetsBody');
         const walletTotalBuildingsEl = document.getElementById('walletTotalBuildings');
         const walletMonthlyWaxEl = document.getElementById('walletMonthlyWax');
         const walletMonthlyUsdEl = document.getElementById('walletMonthlyUsd');
-        const walletAssetsBody = document.getElementById('walletAssetsBody');
-        
-        // Elements Section 11 (Pack Bâtiments)
+        const walletScenarioSummary = document.getElementById('walletScenarioSummary');
         const packBuildingSelect = document.getElementById('packBuildingSelect');
         const packBuildingQtyInput = document.getElementById('packBuildingQty');
         const packToolMultiplierInput = document.getElementById('packToolMultiplier');
@@ -1080,115 +1124,279 @@
         const packBuildingMonthlyNetEl = document.getElementById('packBuildingMonthlyNet');
         const packBuildingRoiEl = document.getElementById('packBuildingRoi');
         const packBuildingRoiDaysEl = document.getElementById('packBuildingRoiDays');
+        const buildingPackCashBackUsdElement = document.getElementById('buildingPackCashBackUsd');
+        const buildingPackCashBackWaxElement = document.getElementById('buildingPackCashBackWax');
+        const buildingPackPriceWaxElement = document.getElementById('buildingPackPriceWax');
         
-        // Elements Section 12 (Market Sniper)
         const btnScanMarket = document.getElementById('btnScanMarket');
         const marketResultsContainer = document.getElementById('marketResultsContainer');
         const marketDealsBody = document.getElementById('marketDealsBody');
         const marketSniperSection = document.getElementById('marketSniperSection');
         const marketRoiFilter = document.getElementById('marketRoiFilter');
-        
-        // ELEMENTS BANNER & INPUTS DE PRIX (Maintenant seulement pour l'affichage dans la Section 2/3)
-        const bannerPriceWaxUsdEl = document.getElementById('bannerPriceWaxUsd'); // Not used anymore, removed banner
-        
 
+        const dovxCurrentWaxPriceDisplay = document.getElementById('dovxCurrentWaxPriceDisplay');
+        const swapAnalysisBody = document.getElementById('swapAnalysisBody');
         
-        let scannedWalletData = []; // Stocke les données simulées du wallet
+        
+        let scannedWalletData = []; // Stocke les données réelles/simulées du wallet (Section 10)
 
 
-        // Initialisation des sélecteurs de zone
-        ZONE_DATA.forEach((zone, index) => {
-            const unitsCostPerTokenBase = zone.totalTuCost / 4; 
-            const option = document.createElement('option');
-            option.value = index;
-            option.textContent = `${zone.name.toUpperCase()} (Coût Total: ${formatUnits(zone.totalTuCost)} TU - "Unitaire: ${formatUnits(unitsCostPerTokenBase)}" TU)`;
-            
-            // Clone l'option pour le sélecteur de Volume
-            zoneSelector.appendChild(option.cloneNode(true));
-            // Clone l'option pour le sélecteur de Pack Design
-            packDesignZoneSelector.appendChild(option.cloneNode(true));
+        // --- DONNÉES DIVISION FOURNIES PAR L'UTILISATEUR (REDACTED FOR BREVITY) ---
+        const RAW_DIVISION_DATA = [
+            "Common F1-26th-INFANTRY-REGIMENT 1,360,3000 100,0000% 22,0000% 100,0000% 72,0000% 1% combat",
+            "Common F2-26th-INFANTRY-REGIMENT 40,9000 100,9000% 23,0000% 100,9000% 73,0000% 1% combat",
+            "Common F3-26th-INFANTRY-REGIMENT 122,7000 102,7000% 24,0000% 102,7000% 74,0000% 1% combat",
+            "Common F4-26th-INFANTRY-REGIMENT 378,1000 108,1000% 25,0000% 108,1000% 75,0000% 1% combat",
+            "Common F1-18th-INFANTRY-REGIMENT 1,360,3000 100,0000% 22,0000% 100,0000% 72,0000% 1% combat",
+            "Common F2-18th-INFANTRY-REGIMENT 40,9000 100,9000% 23,0000% 100,9000% 73,0000% 1% combat",
+            "Common F3-18th-INFANTRY-REGIMENT 122,7000 102,7000% 24,0000% 102,7000% 74,0000% 1% combat",
+            "Common F4-18th-INFANTRY-REGIMENT 378,1000 108,1000% 25,0000% 108,1000% 75,0000% 1% combat",
+            "Common F1-507th-PARACHUTE-INFANTRY-REGIMENT 1,360,3000 22,0000% 100,0000% 22,0000% 100,0000% 1% combat",
+            "Common F2-507th-PARACHUTE-INFANTRY-REGIMENT 40,9000 23,0000% 100,9000% 23,0000% 100,9000% 1% combat",
+            "Common F3-507th-PARACHUTE-INFANTRY-REGIMENT 122,7000 24,0000% 102,7000% 24,0000% 102,7000% 1% combat",
+            "Common F4-507th-PARACHUTE-INFANTRY-REGIMENT 378,1000 25,0000% 108,1000% 25,0000% 108,1000% 1% combat",
+            "Common F1-32nd-FIELD-ARTILLERY-BATTALION 1,360,3000 100,0000% 100,0000% 72,0000% 100,0000% 1% combat",
+            "Common F2-32nd-FIELD-ARTILLERY-BATTALION 40,9000 100,0000% 100,9000% 73,0000% 100,9000% 1% combat",
+            "Common F3-32nd-FIELD-ARTILLERY-BATTALION 122,7000 100,0000% 102,7000% 74,0000% 102,7000% 1% combat",
+            "Common F4-32nd-FIELD-ARTILLERY-BATTALION 378,1000 100,0000% 108,1000% 75,0000% 108,1000% 1% combat",
+            "Common F1-82nd-ARMORED-RECONN-BATTALION 1,360,3000 22,0000% 100,0000% 100,0000% 100,0000% 100% combat",
+            "Common F2-82nd-ARMORED-RECONN-BATTALION 40,9000 23,0000% 100,9000% 100,9000% 100,9000% 100% combat",
+            "Common F3-82nd-ARMORED-RECONN-BATTALION 122,7000 24,0000% 102,7000% 102,7000% 102,7000% 100% combat",
+            "Common F4-82nd-ARMORED-RECONN-BATTALION 378,1000 25,0000% 108,1000% 108,1000% 108,1000% 100% combat",
+            "Uncommon F1-505th-PARACHUTE-INFANTRY-REGIMENT 30,9000 22,0000% 100,0000% 22,0000% 100,0000% 1% combat",
+            "Uncommon F2-505th-PARACHUTE-INFANTRY-REGIMENT 92,7000 23,0000% 100,9000% 23,0000% 100,9000% 1% combat",
+            "Uncommon F3-505th-PARACHUTE-INFANTRY-REGIMENT 278,1000 24,0000% 102,7000% 24,0000% 102,7000% 1% combat",
+            "Uncommon F4-505th-PARACHUTE-INFANTRY-REGIMENT 8124,3000 25,0000% 108,1000% 25,0000% 108,1000% 1% combat",
+            "Uncommon F1-5th-FIELD-ARTILLERY-BATTALION 30,9000 100,0000% 100,0000% 100,0000% 100,0000% 1% combat",
+            "Uncommon F2-5th-FIELD-ARTILLERY-BATTALION 92,7000 100,9000% 100,9000% 100,9000% 100,9000% 1% combat",
+            "Uncommon F3-5th-FIELD-ARTILLERY-BATTALION 278,1000 102,7000% 102,7000% 102,7000% 102,7000% 1% combat",
+            "Uncommon F4-5th-FIELD-ARTILLERY-BATTALION 8124,3000 108,1000% 108,1000% 108,1000% 108,1000% 1% combat",
+            "Uncommon F1-325th-GLIDER-INFANTRY-REGIMENT 30,9000 22,0000% 100,0000% 22,0000% 100,0000% 1% combat",
+            "Uncommon F2-325th-GLIDER-INFANTRY-REGIMENT 92,7000 23,0000% 100,9000% 23,0000% 100,9000% 1% combat",
+            "Uncommon F3-325th-GLIDER-INFANTRY-REGIMENT 278,1000 24,0000% 102,7000% 24,0000% 102,7000% 1% combat",
+            "Uncommon F4-325th-GLIDER-INFANTRY-REGIMENT 8124,3000 25,0000% 108,1000% 25,0000% 108,1000% 1% combat",
+            "Uncommon F1-Anti-tank-Battalion-Xmas 30,9000 22,0000% 100,0000% 100,0000% 100,0000% 100% combat",
+            "Uncommon F2-Anti-tank-Battalion-Xmas 92,7000 23,0000% 100,9000% 100,9000% 100,9000% 100% combat",
+            "Uncommon F3-Anti-tank-Battalion-Xmas 278,1000 24,0000% 102,7000% 102,7000% 102,7000% 100% combat",
+            "Uncommon F4-Anti-tank-Battalion-Xmas 8124,3000 25,0000% 108,1000% 108,1000% 108,1000% 100% combat",
+            "Rare F1-16th-INFANTRY-REGIMENT 17,923,6000 100,0000% 22,0000% 100,0000% 100,0000% 1% combat",
+            "Rare F2-16th-INFANTRY-REGIMENT 5410,8000 100,9000% 23,0000% 100,9000% 100,9000% 1% combat",
+            "Rare F3-16th-INFANTRY-REGIMENT 16132,4000 102,7000% 24,0000% 102,7000% 102,7000% 1% combat",
+            "Rare F4-16th-INFANTRY-REGIMENT 48497,2000 108,1000% 25,0000% 108,1000% 108,1000% 1% combat",
+            "Rare F1-635th-ANTI-TANK-BATTALION 17,923,6000 22,0000% 72,0000% 100,0000% 100,0000% 100% combat",
+            "Rare F2-635th-ANTI-TANK-BATTALION 5410,8000 23,0000% 73,0000% 100,9000% 100,9000% 100% combat",
+            "Rare F3-635th-ANTI-TANK-BATTALION 16132,4000 24,0000% 74,0000% 102,7000% 102,7000% 100% combat",
+            "Rare F4-635th-ANTI-TANK-BATTALION 48497,2000 25,0000% 75,0000% 108,1000% 108,1000% 100% combat",
+            "Epic F1-502nd-PARACHUTE_INFANTRY 42,58,4200 22,0000% 100,0000% 22,0000% 100,0000% 100% combat",
+            "Epic F2-502nd-PARACHUTE_INFANTRY 127,525,2700 23,0000% 100,9000% 23,0000% 100,9000% 100% combat",
+            "Epic F3-502nd-PARACHUTE_INFANTRY 382,575,8100 24,0000% 102,7000% 24,0000% 102,7000% 100% combat",
+            "Epic F4-502nd-PARACHUTE_INFANTRY 1147,5227,4400 25,0000% 108,1000% 25,0000% 108,1000% 100% combat",
+            "Epic F1-37th-ENGINEER-COMBAT-BATTALION 42,58,4200 100,0000% 22,0000% 100,0000% 100,0000% 1% combat",
+            "Epic F2-37th-ENGINEER-COMBAT-BATTALION 127,525,2700 100,9000% 23,0000% 100,9000% 100,9000% 1% combat",
+            "Epic F3-37th-ENGINEER-COMBAT-BATTALION 382,575,8100 102,7000% 24,0000% 102,7000% 102,7000% 1% combat",
+            "Epic F4-37th-ENGINEER-COMBAT-BATTALION 1147,5227,4400 108,1000% 25,0000% 108,1000% 108,1000% 1% combat",
+            "Epic F1-741st-TANK-BATTALION 42,58,4200 22,0000% 100,0000% 22,0000% 72,0000% 1% combat",
+            "Epic F2-741st-TANK-BATTALION 127,525,2700 23,0000% 100,9000% 23,0000% 73,0000% 1% combat",
+            "Epic F3-741st-TANK-BATTALION 382,575,8100 24,0000% 102,7000% 24,0000% 74,0000% 1% combat",
+            "Epic F4-741st-TANK-BATTALION 1147,5227,4400 25,0000% 108,1000% 25,0000% 75,0000% 1% combat",
+            "Epic F1-AFTERLAND 42,58,4200 100,0000% 22,0000% 100,0000% 100,0000% 1% combat",
+            "Epic F2-AFTERLAND 127,525,2700 100,9000% 23,0000% 100,9000% 100,9000% 1% combat",
+            "Epic F3-AFTERLAND 382,575,8100 102,7000% 24,0000% 102,7000% 102,7000% 1% combat",
+            "Epic F4-AFTERLAND 1147,5227,4400 108,1000% 25,0000% 108,1000% 108,1000% 1% combat",
+            "Legendary F1-741-Tank-Battalion-Xmas 247,557,6000 22,0000% 100,0000% 22,0000% 72,0000% 1% combat",
+            "Legendary F2-741-Tank-Battalion-Xmas 742,5172,8000 23,0000% 100,9000% 23,0000% 73,0000% 1% combat",
+            "Legendary F3-741-Tank-Battalion-Xmas 2227,5518,4000 24,0000% 102,7000% 24,0000% 74,0000% 1% combat",
+            "Legendary F4-741-Tank-Battalion-Xmas 6682,51555,2000 25,0000% 108,1000% 25,0000% 75,0000% 1% combat",
+            "Rare F1-346th-GUYENNE-SQUADRON 17,923,6000 100,0000% 100,0000% 22,0000% 100,0000% 100% combat",
+            "Rare F2-346th-GUYENNE-SQUADRON 5410,8000 100,0000% 100,9000% 23,0000% 100,0000% 100% combat",
+            "Rare F3-346th-GUYENNE-SQUADRON 16132,4000 100,0000% 102,7000% 24,0000% 100,0000% 100% combat",
+            "Rare F4-346th-GUYENNE-SQUADRON 48497,2000 100,0000% 108,1000% 25,0000% 100,0000% 100% combat",
+            "Epic F1-USS-FRANKFORD 42,58,4200 125,0000% 100,0000% 100,0000% 75,0000% 100% combat",
+            "Epic F2-USS-FRANKFORD 127,525,2700 125,0000% 100,0000% 100,0000% 75,0000% 100% combat",
+            "Epic F3-USS-FRANKFORD 382,575,8100 125,0000% 100,0000% 100,0000% 75,0000% 100% combat",
+            "Epic F4-USS-FRANKFORD 1147,5227,4400 125,0000% 100,0000% 100,0000% 75,0000% 100% combat",
+            "Rare F2E-F3-16th-INFANTRY-REGIMENT 16132,4000 102,7000% 24,0000% 102,7000% 102,7000% 1% combat",
+            "Common F1-HMS-Glasgow 0,3000 100,0000% 22,0000% 100,0000% 72,0000% 100,0000% combat",
+            "Common F2-HMS-Glasgow 0,9000 100,9000% 23,0000% 100,9000% 73,0000% 100,0000% combat",
+            "Common F3-HMS-Glasgow 2,7000 102,7000% 24,0000% 102,7000% 74,0000% 100,0000% combat",
+            "Common F4-HMS-Glasgow 8,1000 108,1000% 25,0000% 108,1000% 75,0000% 100,0000% combat",
+            "Uncommon F1-De-Havilland-Mosquito B.IV 0,9000 100,0000% 22,0000% 100,0000% 72,0000% 100,0000% combat",
+            "Uncommon F2-De-Havilland-Mosquito B.IV 2,7000 100,9000% 23,0000% 100,9000% 73,0000% 100,0000% combat",
+            "Uncommon F3-De-Havilland-Mosquito B.IV 8,1000 102,7000% 24,0000% 102,7000% 74,0000% 100,0000% combat",
+            "Uncommon F4-De-Havilland-Mosquito B.IV 24,3000 108,1000% 25,0000% 108,1000% 75,0000% 100,0000% combat",
+            "Uncommon F1-Avro-Lancaster-Mark I 0,9000 100,0000% 22,0000% 100,0000% 72,0000% 100,0000% combat",
+            "Uncommon F2-Avro-Lancaster-Mark I 2,7000 100,9000% 23,0000% 100,9000% 73,0000% 100,0000% combat",
+            "Uncommon F3-Avro-Lancaster-Mark I 8,1000 102,7000% 24,0000% 102,7000% 74,0000% 100,0000% combat",
+            "Uncommon F4-Avro-Lancaster-Mark I 24,3000 108,1000% 25,0000% 108,1000% 75,0000% 100,0000% combat",
+            "Rare F1-USS-Texas 3,6000 22,0000% 22,0000% 22,0000% 22,0000% 100,0000% combat",
+            "Rare F2-USS-Texas 10,8000 23,0000% 23,0000% 23,0000% 23,0000% 100,0000% combat",
+            "Rare F3-USS-Texas 32,4000 24,0000% 24,0000% 24,0000% 24,0000% 100,0000% combat",
+            "Rare F4-USS-Texas 97,2000 25,0000% 25,0000% 25,0000% 25,0000% 100,0000% combat",
+            "Rare F1-USS-Baldwin 3,6000 22,0000% 22,0000% 22,0000% 22,0000% 100,0000% combat",
+            "Rare F2-USS-Baldwin 10,8000 23,0000% 23,0000% 23,0000% 23,0000% 100,0000% combat",
+            "Rare F3-USS-Baldwin 32,4000 24,0000% 24,0000% 24,0000% 24,0000% 100,0000% combat",
+            "Rare F4-USS-Baldwin 97,2000 25,0000% 25,0000% 25,0000% 25,0000% 100,0000% combat",
+            "Epic F1-Glen-Martin-B-26-B-Marauder 8,4200 22,0000% 22,0000% 22,0000% 22,0000% 100,0000% combat",
+            "Epic F2-Glen-Martin-B-26-B-Marauder 25,2700 23,0000% 23,0000% 23,0000% 23,0000% 100,0000% combat",
+            "Epic F3-Glen-Martin-B-26-B-Marauder 75,8100 24,0000% 24,0000% 24,0000% 24,0000% 100,0000% combat",
+            "Epic F4-Glen-Martin-B-26-B-Marauder 227,4400 25,0000% 25,0000% 25,0000% 25,0000% 100,0000% combat",
+            "Epic F1-Georges-Leygues 8,4200 22,0000% 22,0000% 22,0000% 22,0000% 100,0000% combat",
+            "Epic F2-Georges-Leygues 25,2700 23,0000% 23,0000% 23,0000% 23,0000% 100,0000% combat",
+            "Epic F3-Georges-Leygues 75,8100 24,0000% 24,0000% 24,0000% 24,0000% 100,0000% combat",
+            "Epic F4-Georges-Leygues 227,4400 25,0000% 25,0000% 25,0000% 25,0000% 100,0000% combat",
+            "Legendary F1-USS-Arkansas 57,6000 22,0000% 22,0000% 22,0000% 22,0000% 100,0000% combat",
+            "Legendary F2-USS-Arkansas 172,8000 23,0000% 23,0000% 23,0000% 23,0000% 100,0000% combat",
+            "Legendary F3-USS-Arkansas 518,4000 24,0000% 24,0000% 24,0000% 24,0000% 100,0000% combat",
+            "Legendary F4-USS-Arkansas 1555,2000 25,0000% 25,0000% 25,0000% 25,0000% 100,0000% combat"
+        ];
+        
+        const DIVISION_DATA = RAW_DIVISION_DATA.map(line => {
+             const parts = line.split(/\s+/);
+             const rarity = parts[0]; 
+             const type = parts.pop();
+             const beachPct = parseFrenchPercent(parts.pop());
+             const plainPct = parseFrenchPercent(parts.pop());
+             const forestPct = parseFrenchPercent(parts.pop());
+             const hillPct = parseFrenchPercent(parts.pop());
+             const cityPct = parseFrenchPercent(parts.pop());
+             const remaining = parts.slice(1).join(' ').trim();
+             const valueParts = remaining.split(/\s+/);
+             let unitId, value, weight;
+             
+             if (valueParts.length > 2) {
+                 weight = parseFrenchFloat(valueParts.pop());
+                 value = parseFrenchFloat(valueParts.pop());
+                 unitId = valueParts.join(' ').trim();
+             } else if (valueParts.length === 2) {
+                 unitId = valueParts[0];
+                 value = parseFrenchFloat(valueParts[1]);
+                 weight = 0; 
+             } else {
+                 unitId = remaining;
+                 value = 0;
+                 weight = 0;
+             }
+             
+             return {
+                 rarity: rarity, unitId: unitId, value: value, weight: weight,
+                 beach: beachPct, plain: plainPct, forest: forestPct, 
+                 hill: hillPct, city: cityPct, type: type
+             };
         });
-        
-        // Initialisation du tableau des bâtiments
-        const initializeBuildingTable = () => {
-            buildingsTableBody.innerHTML = '';
-            // On vide le selecteur du pack batiment aussi
-            if(packBuildingSelect) packBuildingSelect.innerHTML = '';
+
+
+        // --- Fonctions d'Initialisation ---
+
+        const initializeSelectors = () => {
+             // Remplissage des sélecteurs de zones (Volume et Pack Design)
+             if (zoneSelector) zoneSelector.innerHTML = '';
+             if (packDesignZoneSelector) packDesignZoneSelector.innerHTML = '';
+             
+             ZONE_DATA.forEach((zone, index) => {
+                 const zoneDisplay = `${zone.name.toUpperCase()} (Récompense: ${formatUnits(zone.dovxReward)} DOVX - Coût/J: ${formatUnits(zone.totalTuCost)} TU)`;
+                 
+                 const option = document.createElement('option');
+                 option.value = index;
+                 option.textContent = zoneDisplay;
+                 
+                 if (zoneSelector) zoneSelector.appendChild(option.cloneNode(true));
+                 if (packDesignZoneSelector) packDesignZoneSelector.appendChild(option.cloneNode(true));
+             });
+
+             if (zoneSelector) zoneSelector.value = 0;
+             if (packDesignZoneSelector) packDesignZoneSelector.value = 0;
+        };
+
+         // Met à jour la quantité d'un bâtiment et déclenche le recalcul des totaux utilisateur.
+        window.updateBuildingQuantity = (input) => {
+            const index = parseInt(input.getAttribute('data-index'));
+            const newQty = parseInt(input.value) || 0;
             
-            // On récupère la valeur du filtre
+            if (index >= 0 && index < BUILDING_DATA.length) {
+                BUILDING_DATA[index].userQty = newQty;
+                updateBuildingTotals(); // Recalculer le pied de page
+            }
+        };
+
+        const initializeBuildingTable = () => {
+            if (!buildingsTableBody || !packBuildingSelect) return;
+            buildingsTableBody.innerHTML = '';
+            packBuildingSelect.innerHTML = ''; // Réinitialisation du sélecteur de pack bâtiment
+            
             const filterValue = buildingTypeFilter.value;
 
             BUILDING_DATA.forEach((building, index) => {
-                // Logique de filtrage (visual hide)
                 const isHidden = (filterValue !== 'ALL' && building.type !== filterValue) ? 'hidden' : '';
 
                 const tr = document.createElement('tr');
                 tr.className = `hover:bg-gray-800/40 building-row ${isHidden}`;
-                tr.setAttribute('data-type', building.type); // Pour le filtrage CSS si besoin
+                tr.setAttribute('data-type', building.type);
                 
                 tr.innerHTML = `
                     <td class="p-3 font-semibold ${building.cssClass}">
                         ${building.name} 
                         <span class="text-xs opacity-70 block">${building.technicalName}</span>
                     </td>
-                    <td class="p-3 text-right">${formatUnits(building.dovxCost)}</td>
+                    <td class="p-3 text-right">${formatUnits(building.dovxCost * 24)}</td> <!-- Coût DOVX/24h -->
                     <td class="p-3 text-right text-blue-300 building-cost-wax" data-index="${index}">--</td>
                     <td class="p-3 text-right text-gray-300 font-medium">${formatUnits(building.prodPerHour * 24)}</td>
                     <td class="p-3 text-right text-green-400 building-revenue-wax" data-index="${index}">--</td>
                     <td class="p-3 text-right text-green-400 building-margin-wax" data-index="${index}">--</td>
                     <td class="p-3 text-right text-green-400 building-revenue-usd-monthly" data-index="${index}">--</td>
                     <td class="p-3 text-center">
-                        <input type="number" min="0" value="0" class="building-qty bg-gray-900 border border-gray-700 rounded w-16 text-center text-sm p-1 focus:ring-orange-500 focus:border-orange-500" data-index="${index}">
+                        <input type="number" min="0" value="${building.userQty}" 
+                            class="building-qty input-style w-16 text-center p-1 rounded text-sm focus:ring-orange-500 focus:border-orange-500" 
+                            data-index="${index}" onchange="updateBuildingQuantity(this)">
                     </td>
                 `;
                 buildingsTableBody.appendChild(tr);
 
                 // Populate Pack Building Selector (Section 11)
-                if(packBuildingSelect) {
-                    const opt = document.createElement('option');
-                    opt.value = index;
-                    opt.textContent = `${building.name}`;
-                    packBuildingSelect.appendChild(opt);
-                }
+                const opt = document.createElement('option');
+                opt.value = index;
+                opt.textContent = `${building.name}`;
+                packBuildingSelect.appendChild(opt);
             });
-            
-            // Ajout des listeners pour les quantités
-            document.querySelectorAll('.building-qty').forEach(input => {
-                input.addEventListener('input', updateBuildingTotals);
-            });
-        };
-        
-        // Listener sur le filtre
-        if(buildingTypeFilter) {
-            buildingTypeFilter.addEventListener('change', () => {
-                const filterValue = buildingTypeFilter.value;
-                const rows = document.querySelectorAll('.building-row');
-                rows.forEach(row => {
-                    const rowType = row.getAttribute('data-type');
-                    if (filterValue === 'ALL' || rowType === filterValue) {
-                        row.classList.remove('hidden');
-                    } else {
-                        row.classList.add('hidden');
-                    }
-                });
-            });
-        }
 
-        // --------------------------------------------------------------------------
-        // --- LOGIQUE DE CALCUL DU PACK DESIGN ---
-        // --------------------------------------------------------------------------
+             // Ajout des listeners pour le filtrage
+            if(buildingTypeFilter) {
+                buildingTypeFilter.addEventListener('change', () => {
+                    const filterValue = buildingTypeFilter.value;
+                    const rows = document.querySelectorAll('.building-row');
+                    rows.forEach(row => {
+                        const rowType = row.getAttribute('data-type');
+                        if (filterValue === 'ALL' || rowType === filterValue) {
+                            row.classList.remove('hidden');
+                        } else {
+                            row.classList.add('hidden');
+                        }
+                    });
+                    updateBuildingTotals(); // Mettre à jour les totaux même si des lignes sont cachées
+                });
+            }
+        };
+
+
+        // --- Fonctions de Mise à Jour des Sections ---
+
+        // Met à jour la visibilité et l'état des champs de prix selon le mode USD/WAX
+        // Cette fonction est désormais obsolète, mais son corps est conservé vide pour éviter des erreurs si elle est appelée par erreur.
+        const updatePricingModeUI = (mode) => {
+            // Logique retirée : WAX est le seul mode d'entrée désormais pour le prix du pack
+        };
+
+        // Met à jour les calculs du Pack Design (Section 8)
         const calculatePackDesign = (tokenPrices) => {
             const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
             
             const selectedDesignIndex = parseInt(packDesignZoneSelector.value);
             const selectedDesignZone = ZONE_DATA[selectedDesignIndex];
             
-            // Divisions contenues dans le pack designé (réutilise l'input existant)
             const divisionsPerPack = Math.max(0, parseInt(divisionsPerPackInput.value) || 0); 
             const pricePackUsd = parseFrenchFloat(packDesignPriceUsdInput.value);
 
-            // 1. Validation
-            if (!selectedDesignZone || isNaN(newPriceDovX) || newPriceDovX <= 0 || isNaN(newPriceCostToken) || newPriceCostToken <= 0 || isNaN(priceWaxUsd) || priceWaxUsd <= 0 || isNaN(divisionsPerPack) || isNaN(pricePackUsd) || divisionsPerPack === 0) {
+            // 1. Validation essentielle
+            if (!selectedDesignZone || priceWaxUsd <= 0 || newPriceDovX <= 0 || newPriceCostToken <= 0 || divisionsPerPack === 0 || pricePackUsd <= 0) {
                  if(designPackNetUsdElement) designPackNetUsdElement.textContent = '--';
                  if(designPackRoiDailyElement) designPackRoiDailyElement.textContent = '--';
                  if(designPackRoiDaysElement) designPackRoiDaysElement.textContent = '--';
@@ -1199,16 +1407,13 @@
             }
             
             // 2. Calcul du Prix du Pack en WAX
-            const pricePackWax = (priceWaxUsd > 0) ? pricePackUsd / priceWaxUsd : Infinity;
+            const pricePackWax = pricePackUsd / priceWaxUsd;
             
-            // 3. Calcul du ROI du Pack (basé sur toutes les divisions contenues dans le pack)
-            const unitsCostPerTokenBase = selectedDesignZone.totalTuCost / 4;
+            // 3. Calcul du ROI du Pack
             const unitsDovX = selectedDesignZone.dovxReward;
-
             const singleDivisionWaxCost = selectedDesignZone.totalTuCost * newPriceCostToken; 
             const singleDivisionWaxReward = unitsDovX * newPriceDovX; 
             
-            // Coût et Récompense TOTAUX du pack par jour
             const packDailyWaxCost = singleDivisionWaxCost * divisionsPerPack;
             const packDailyWaxReward = singleDivisionWaxReward * divisionsPerPack;
             
@@ -1219,11 +1424,11 @@
             let packRoiDays = Infinity;
             let packRoiDailyPercent = 0;
             
-            if (pricePackWax > 0) {
-                packRoiDailyPercent = packNetProfitLossWax / pricePackWax;
+            if (pricePackUsd > 0) {
+                packRoiDailyPercent = packNetProfitLossUsd / pricePackUsd;
 
-                if (packNetProfitLossWax > 0) {
-                    packRoiDays = pricePackWax / packNetProfitLossWax;
+                if (packNetProfitLossUsd > 0) {
+                    packRoiDays = pricePackUsd / packNetProfitLossUsd;
                 }
             }
             
@@ -1234,14 +1439,14 @@
             // 6. Mise à jour de l'affichage
             if(designPackNetUsdElement) {
                 designPackNetUsdElement.textContent = formatUSD(packNetProfitLossUsd, 4);
-                designPackNetUsdElement.classList.remove('text-green-400', 'text-red-400', 'text-pink-400');
-                designPackNetUsdElement.classList.add(packNetProfitLossUsd >= 0 ? 'text-green-400' : 'text-red-400');
+                designPackNetUsdElement.classList.toggle('text-red-400', packNetProfitLossUsd < 0);
+                designPackNetUsdElement.classList.toggle('text-green-400', packNetProfitLossUsd >= 0);
             }
 
             if(designPackRoiDailyElement) {
                 designPackRoiDailyElement.textContent = formatPercent(packRoiDailyPercent, 4);
-                designPackRoiDailyElement.classList.remove('text-green-400', 'text-red-400', 'text-pink-400');
-                designPackRoiDailyElement.classList.add(packRoiDailyPercent >= 0 ? 'text-green-400' : 'text-red-400');
+                designPackRoiDailyElement.classList.toggle('text-red-400', packRoiDailyPercent < 0);
+                designPackRoiDailyElement.classList.toggle('text-green-400', packRoiDailyPercent >= 0);
             }
 
             if(designPackRoiDaysElement) designPackRoiDaysElement.textContent = (packRoiDays === Infinity) ? '--' : formatUnits(packRoiDays);
@@ -1249,75 +1454,59 @@
             if(designPackCashBackUsdElement) designPackCashBackUsdElement.textContent = formatUSD(cbUsd, 2);
             if(designPackCashBackWaxElement) designPackCashBackWaxElement.textContent = formatWAX(cbWax, 0);
             if(designPackPriceWaxElement) designPackPriceWaxElement.textContent = formatWAX(pricePackWax, 0);
-
         };
 
-        // --------------------------------------------------------------------------
-        // --- LOGIQUE BATIMENTS ---
-        // --------------------------------------------------------------------------
+        // Met à jour les calculs du Simulateur de Bâtiments (Section 9)
         const updateBuildingTable = (tokenPrices) => {
-             const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
+            const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
              
-             // LOG DE DÉBOGAGE AJOUTÉ
-             console.log(`[SECTION 9] Recalcul USD avec WAX/USD: ${priceWaxUsd}`); 
+            // MISE À JOUR DU TAUX D'AFFICHAGE DANS LE HEADER DE LA SECTION 9
+            if(section9RatesDisplay) {
+                section9RatesDisplay.textContent = `(Taux: 1 DOVX = ${formatWAX(newPriceDovX, 6)} | 1 TU = ${formatWAX(newPriceCostToken, 6)})`;
+            }
 
-             // MAJ du Header avec les taux
-             if(section9RatesDisplay) {
-                 section9RatesDisplay.textContent = `(Taux: 1 DOVX = ${formatWAX(newPriceDovX, 6)} | 1 TU = ${formatWAX(newPriceCostToken, 6)})`;
-             }
+            // Mise à jour de chaque ligne du tableau
+            BUILDING_DATA.forEach((building, index) => {
+                const hourlyCostDovx = building.dovxCost;
+                const dailyCostDovx = hourlyCostDovx * 24;
+                const dailyCostWax = dailyCostDovx * newPriceDovX;
 
-             // Mise à jour de chaque ligne du tableau
-             BUILDING_DATA.forEach((building, index) => {
-                 // 1. Coût Horaire DOVX * 24 * Prix DOVX = Coût Journalier WAX (OpEx)
-                 const hourlyCostDovx = building.dovxCost;
-                 const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
+                const dailyProdTu = building.prodPerHour * 24;
+                const dailyRevenueWax = dailyProdTu * newPriceCostToken;
+                const dailyMarginWax = dailyRevenueWax - dailyCostWax;
 
-                 // 2. Revenu Journalier WAX (Vente Prod)
-                 const dailyProdTu = building.prodPerHour * 24;
-                 const dailyRevenueWax = dailyProdTu * newPriceCostToken;
-
-                 // 3. Marge Nette WAX (Revenu - Coût)
-                 const dailyMarginWax = dailyRevenueWax - dailyCostWax;
-
-                 // 4. Projection Mensuelle USD
-                 // CE CALCUL DEPEND DIRECTEMENT DE priceWaxUsd
-                 const dailyMarginUsd = dailyMarginWax * priceWaxUsd;
-                 const monthlyMarginUsd = dailyMarginUsd * 30;
+                const monthlyMarginUsd = dailyMarginWax * priceWaxUsd * DAYS_IN_MONTH;
                  
+                const costEl = document.querySelector(`.building-cost-wax[data-index="${index}"]`);
+                const revEl = document.querySelector(`.building-revenue-wax[data-index="${index}"]`);
+                const marginWaxEl = document.querySelector(`.building-margin-wax[data-index="${index}"]`);
+                const revUsdMonthlyEl = document.querySelector(`.building-revenue-usd-monthly[data-index="${index}"]`);
                  
-                 // MAJ DOM
-                 const costEl = document.querySelector(`.building-cost-wax[data-index="${index}"]`);
-                 const revEl = document.querySelector(`.building-revenue-wax[data-index="${index}"]`);
-                 const marginWaxEl = document.querySelector(`.building-margin-wax[data-index="${index}"]`);
-                 const revUsdMonthlyEl = document.querySelector(`.building-revenue-usd-monthly[data-index="${index}"]`);
-                 
-                 if(costEl) costEl.textContent = formatWAX(dailyCostWax, 4);
-                 if(revEl) revEl.textContent = formatWAX(dailyRevenueWax, 4);
-                 if(marginWaxEl) {
-                     marginWaxEl.textContent = formatWAX(dailyMarginWax, 4);
-                     marginWaxEl.classList.remove('text-green-400', 'text-red-400');
-                     marginWaxEl.classList.add(dailyMarginWax >= 0 ? 'text-green-400' : 'text-red-400');
-                 }
-                 if(revUsdMonthlyEl) {
-                     revUsdMonthlyEl.textContent = formatUSD(monthlyMarginUsd, 2);
-                     revUsdMonthlyEl.classList.remove('text-green-400', 'text-red-400');
-                     revUsdMonthlyEl.classList.add(monthlyMarginUsd >= 0 ? 'text-green-400' : 'text-red-400');
-                 }
-             });
+                if(costEl) costEl.textContent = formatWAX(dailyCostWax, 4);
+                if(revEl) revEl.textContent = formatWAX(dailyRevenueWax, 4);
+                if(marginWaxEl) {
+                    marginWaxEl.textContent = formatWAX(dailyMarginWax, 4);
+                    marginWaxEl.classList.toggle('text-green-400', dailyMarginWax >= 0);
+                    marginWaxEl.classList.toggle('text-red-400', dailyMarginWax < 0);
+                }
+                if(revUsdMonthlyEl) {
+                    revUsdMonthlyEl.textContent = formatUSD(monthlyMarginUsd, 2);
+                    revUsdMonthlyEl.classList.toggle('text-green-400', monthlyMarginUsd >= 0);
+                    revUsdMonthlyEl.classList.toggle('text-red-400', monthlyMarginUsd < 0);
+                }
+            });
              
-             updateBuildingTotals();
-             
-             // IMPORTANT : Mettre à jour la section Wallet si des données sont présentes
-             if(scannedWalletData.length > 0) {
-                calculateWalletEarnings(tokenPrices);
-             }
-
-             // IMPORTANT : Calculer le Pack Bâtiment (Section 11)
-             calculateBuildingPackResults(tokenPrices);
+            updateBuildingTotals();
+            calculateBuildingPackResults(tokenPrices);
+            
+            // Si le scan a déjà été fait, on met à jour les gains Wallet
+            if(scannedWalletData.length > 0) {
+               calculateWalletEarnings(tokenPrices);
+            }
         };
-        
+
+        // Calcule les totaux utilisateur (pied de page du tableau Section 9)
         const updateBuildingTotals = () => {
-             // Récupère les prix actuels (variables globales)
              const newPriceDovX = currentPriceDovX;
              const newPriceCostToken = currentPriceCostToken;
              const priceWaxUsd = currentPriceWaxUsd;
@@ -1327,12 +1516,9 @@
              let totalDailyMarginWax = 0;
              let totalMonthlyMarginUsd = 0;
              
-             document.querySelectorAll('.building-qty').forEach((input, index) => {
-                 const qty = parseInt(input.value) || 0;
+             BUILDING_DATA.forEach(building => {
+                 const qty = building.userQty;
                  if (qty > 0) {
-                     const building = BUILDING_DATA[index];
-                     
-                     // Recalcul local pour le total (identique à updateBuildingTable)
                      const hourlyCostDovx = building.dovxCost;
                      const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
                      
@@ -1340,7 +1526,7 @@
                      const dailyRevenueWax = dailyProdTu * newPriceCostToken;
                      
                      const dailyMarginWax = dailyRevenueWax - dailyCostWax;
-                     const monthlyMarginUsd = dailyMarginWax * priceWaxUsd * 30;
+                     const monthlyMarginUsd = dailyMarginWax * priceWaxUsd * DAYS_IN_MONTH;
                      
                      totalDailyTu += dailyProdTu * qty;
                      totalDailyRevWax += dailyRevenueWax * qty;
@@ -1354,114 +1540,272 @@
              
              if(userTotalMarginWaxEl) {
                  userTotalMarginWaxEl.textContent = formatWAX(totalDailyMarginWax, 4);
-                 userTotalMarginWaxEl.classList.remove('text-green-400', 'text-red-400');
-                 userTotalMarginWaxEl.classList.add(totalDailyMarginWax >= 0 ? 'text-green-400' : 'text-red-400');
+                 userTotalMarginWaxEl.classList.toggle('text-green-400', totalDailyMarginWax >= 0);
+                 userTotalMarginWaxEl.classList.toggle('text-red-400', totalDailyMarginWax < 0);
              }
 
              if(userTotalRevenueUsdMonthlyEl) {
                  userTotalRevenueUsdMonthlyEl.textContent = formatUSD(totalMonthlyMarginUsd, 2);
-                 userTotalRevenueUsdMonthlyEl.classList.remove('text-green-400', 'text-red-400');
-                 userTotalRevenueUsdMonthlyEl.classList.add(totalMonthlyMarginUsd >= 0 ? 'text-green-400' : 'text-red-400');
+                 userTotalRevenueUsdMonthlyEl.classList.toggle('text-green-400', totalMonthlyMarginUsd >= 0);
+                 userTotalRevenueUsdMonthlyEl.classList.toggle('text-red-400', totalMonthlyMarginUsd < 0);
              }
         };
 
-        // --------------------------------------------------------------------------
-        // --- LOGIQUE SECTION 10: WALLET SCANNER (REAL API) ---
-        // --------------------------------------------------------------------------
+        // Met à jour les calculs du Créateur de Pack Bâtiment (Section 11)
+        const calculateBuildingPackResults = (tokenPrices) => {
+            const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
+
+            const selectedIndex = parseInt(packBuildingSelect.value);
+            const building = BUILDING_DATA[selectedIndex];
+            const qty = Math.max(1, parseInt(packBuildingQtyInput.value) || 1);
+            const multiplier = Math.max(1.00, parseFloat(packToolMultiplierInput.value) || 1.00);
+            const pricePackUsd = parseFloat(packBuildingPriceInput.value) || 0;
+
+            if (!building || priceWaxUsd <= 0 || newPriceDovX <= 0 || newPriceCostToken <= 0) {
+                const defaultValue = '--';
+                 if(packBuildingProdEl) packBuildingProdEl.textContent = defaultValue;
+                 if(packBuildingOpExEl) packBuildingOpExEl.textContent = defaultValue;
+                 if(packBuildingMonthlyNetEl) packBuildingMonthlyNetEl.textContent = defaultValue;
+                 if(packBuildingRoiEl) packBuildingRoiEl.textContent = defaultValue;
+                 if(packBuildingProdBaseEl) packBuildingProdBaseEl.textContent = `Base: ${defaultValue}`;
+                 if(packBuildingRoiDaysEl) packBuildingRoiDaysEl.textContent = `${defaultValue} Jours`;
+                 if(buildingPackCashBackUsdElement) buildingPackCashBackUsdElement.textContent = defaultValue;
+                 if(buildingPackCashBackWaxElement) buildingPackCashBackWaxElement.textContent = defaultValue;
+                 if(buildingPackPriceWaxElement) buildingPackPriceWaxElement.textContent = defaultValue;
+                 return;
+            }
+
+            // 1. Prod
+            const baseDailyProd = building.prodPerHour * 24 * qty;
+            const totalDailyProd = baseDailyProd * multiplier;
+
+            // 2. Revenue & OpEx
+            const dailyRevenueWax = totalDailyProd * newPriceCostToken;
+            const dailyCostDovx = building.dovxCost * 24 * qty;
+            const dailyOpExWax = dailyCostDovx * newPriceDovX;
+
+            // 3. Marge Nette
+            const dailyNetWax = dailyRevenueWax - dailyOpExWax;
+            const dailyNetUsd = dailyNetWax * priceWaxUsd;
+            const monthlyNetUsd = dailyNetUsd * DAYS_IN_MONTH;
+            const pricePackWax = (priceWaxUsd > 0) ? pricePackUsd / priceWaxUsd : 0;
+
+            // 4. ROI
+            let roiDays = Infinity;
+            if (dailyNetUsd > 0 && pricePackUsd > 0) {
+                roiDays = pricePackUsd / dailyNetUsd;
+            } else if (pricePackUsd === 0 && dailyNetUsd > 0) {
+                roiDays = 0; 
+            }
+
+            const roiPercentMonthly = (pricePackUsd > 0) ? (monthlyNetUsd / pricePackUsd) : 0;
+
+            // 5. Cash Back
+            const cashBackUsd = pricePackUsd * CASH_BACK_PERCENT;
+            const cashBackWax = pricePackWax * CASH_BACK_PERCENT;
+
+            // --- UI Update ---
+            if(packBuildingProdEl) packBuildingProdEl.textContent = formatUnits(totalDailyProd) + ' TU';
+            if(packBuildingProdBaseEl) packBuildingProdBaseEl.textContent = `Base: ${formatUnits(baseDailyProd)} TU (x${multiplier.toFixed(2)})`;
+            if(packBuildingOpExEl) packBuildingOpExEl.textContent = formatWAX(dailyOpExWax, 4);
+            
+            if(packBuildingMonthlyNetEl) {
+                packBuildingMonthlyNetEl.textContent = formatUSD(monthlyNetUsd, 2);
+                packBuildingMonthlyNetEl.classList.toggle('text-emerald-400', monthlyNetUsd >= 0);
+                packBuildingMonthlyNetEl.classList.toggle('text-red-400', monthlyNetUsd < 0);
+            }
+
+            if (packBuildingRoiEl) {
+                if (roiDays === Infinity && monthlyNetUsd <= 0) {
+                    packBuildingRoiEl.textContent = "Non Rentable";
+                    packBuildingRoiEl.classList.add('text-red-400');
+                    packBuildingRoiEl.classList.remove('text-yellow-400');
+                } else {
+                    packBuildingRoiEl.textContent = formatPercent(roiPercentMonthly, 2) + " / mois";
+                    packBuildingRoiEl.classList.remove('text-red-400');
+                    packBuildingRoiEl.classList.add('text-yellow-400');
+                }
+            }
+
+            if(packBuildingRoiDaysEl) packBuildingRoiDaysEl.textContent = isFinite(roiDays) ? formatUnits(roiDays) + " Jours pour ROI" : "-- Jours";
+            
+            // FIX: Utilisation des éléments de la Section 11
+            if(buildingPackCashBackUsdElement) buildingPackCashBackUsdElement.textContent = formatUSD(cashBackUsd, 2);
+            if(buildingPackCashBackWaxElement) buildingPackCashBackWaxElement.textContent = formatWAX(cashBackWax, 0);
+            if(buildingPackPriceWaxElement) buildingPackPriceWaxElement.textContent = formatWAX(pricePackWax, 0);
+        };
+
+        // Calcule l'analyse de swap (Section 13)
+        const calculateSwapAnalysis = (tokenPrices) => {
+            const { newPriceDovX } = tokenPrices;
+            
+            if (dovxCurrentWaxPriceDisplay) {
+                 dovxCurrentWaxPriceDisplay.textContent = `*Prix DOVX/WAX actuel (Section 1): ${formatWAX(newPriceDovX, 8)}*`;
+            }
+            
+            if (newPriceDovX <= 0 || !isFinite(newPriceDovX)) {
+                if(swapAnalysisBody) swapAnalysisBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-red-400">Veuillez définir un prix DOVX/WAX valide (Section 1).</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            
+            SWAP_PAIRS.forEach(pair => {
+                // Simuler que le prix du token cible en WAX est P_Target (soit pair.priceWax)
+                // Simuler que le prix du DOVX en token cible est R (soit 1 DOVX = R * Target)
+                
+                // Calcul du prix du token cible R en utilisant le prix DOVX * Actuel / prix Target Simulé
+                // Si 1 TLM = 0.5 WAX, et 1 DOVX = 0.005285 WAX
+                // 1 DOVX doit s'échanger contre 0.005285 / 0.5 = 0.01057 TLM
+                // (Ce ratio est le marché Alcor qui est notre baseline 'fair value')
+                const fairDovxTargetRatio = newPriceDovX / pair.priceWax;
+                
+                // Arbitrage: On simule une opportunité de 10% sur ce ratio pour 1 token
+                // Pour trouver la valeur implicite d'UN DOVX en WAX en passant par le token cible:
+                // Si 1 DOVX -> 0.012 TLM (Arbitrage de 13% vs 0.01057)
+                // Valeur Implicite = (DOVX échangé) * (Prix WAX du token cible)
+                // Ici, on va simuler que l'échange offre 10% de plus que la valeur directe.
+
+                // Simuler une opportunité d'Arbitrage (e.g., Target Token est surévalué par rapport à DOVX sur une paire)
+                // Nous allons supposer que 1 DOVX achète T * 1.10 (pour un gain de 10%) du Target Token sur l'échange.
+                // Donc le ratio simulé sur la paire serait: fairDovxTargetRatio * (1 + ArbitragePercent)
+                const ARBITRAGE_GAIN = 0.10; // Simuler un gain de 10% (0.1) ou une perte de -5% (-0.05)
+                const realDovxTargetRatio = pair.token === "TLM" ? fairDovxTargetRatio * (1 + ARBITRAGE_GAIN) : fairDovxTargetRatio;
+                
+                // Valeur Implicite d'UN DOVX via l'échange indirect (DOVX -> Target -> WAX)
+                // C'est la quantité de Target obtenue par 1 DOVX (realDovxTargetRatio) multipliée par le prix WAX du Target.
+                const impliedWaxValue = realDovxTargetRatio * pair.priceWax;
+                
+                // Gain/Perte Arbitrage en pourcentage (comparé au prix DOVX/WAX direct)
+                const arbitrageGainRatio = (impliedWaxValue / newPriceDovX) - 1;
+                
+                const colorClass = arbitrageGainRatio > 0.01 ? 'text-green-400 font-extrabold' : (arbitrageGainRatio < -0.01 ? 'text-red-400' : 'text-gray-400');
+                const actionText = arbitrageGainRatio > 0.01 ? 'Swap Recommandé' : (arbitrageGainRatio < -0.01 ? 'Éviter le Swap' : 'Indifférent');
+
+                html += `
+                    <tr class="hover:bg-gray-800/40">
+                        <td class="p-3 font-semibold text-purple-200">DOVX / ${pair.token}</td>
+                        <td class="p-3 text-right">${formatWAX(pair.priceWax, 4)}</td>
+                        <td class="p-3 text-right text-purple-300">${formatWAX(impliedWaxValue, 8)}</td>
+                        <td class="p-3 text-right ${colorClass}">
+                            ${formatPercent(arbitrageGainRatio, 2)} 
+                            <span class="text-xs text-gray-500 block">${actionText}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            if(swapAnalysisBody) swapAnalysisBody.innerHTML = html;
+        };
+
+
+        // --- Fonctions d'Appel API Réelles ---
+
+        // Récupération prix live WAX/USD (CoinGecko)
+        const fetchLiveWaxPrice = async () => {
+            const priceInput = priceWaxUsdInput;
+            const btn = btnFetchPrice;
+            if (btn) btn.textContent = "⌛...";
+            btn.disabled = true;
+
+            try {
+                // Utilisation d'un backoff exponentiel pour l'appel API
+                let response;
+                let data;
+                const maxRetries = 3;
+                let delay = 1000;
+
+                for (let i = 0; i < maxRetries; i++) {
+                    response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=wax&vs_currencies=usd');
+                    if (response.ok) {
+                        data = await response.json();
+                        break;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; 
+                }
+
+                if (!response.ok || !data) throw new Error("Erreur API CoinGecko après retries");
+                
+                const price = data.wax.usd;
+
+                if (price) {
+                    priceInput.value = price.toString().replace('.', ',');
+                    currentPriceWaxUsd = price; 
+                    calculate();
+                    
+                    if (btn) btn.textContent = "✅";
+                    setTimeout(() => {
+                        if (btn) btn.textContent = "🔄 Live";
+                        btn.disabled = false;
+                    }, 2000);
+                }
+
+            } catch (e) {
+                console.warn("Erreur fetch prix WAX/USD:", e);
+                if (btn) btn.textContent = "❌ Err";
+                setTimeout(() => {
+                    if (btn) btn.textContent = "🔄 Live";
+                    btn.disabled = false;
+                }, 3000);
+            }
+        };
         
-        // Fonction réelle API AtomicAssets
+        // Scan Wallet AtomicAssets (Section 10)
         const fetchWalletAssets = async (walletName) => {
-            // Liste de endpoints pour la redondance
             const endpoints = ATOMIC_ENDPOINTS;
+            let queryParams = `?owner=${walletName}&page=1&limit=1000&collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}`;
 
-            // Paramètres communs
-            let queryParams = `?owner=${walletName}&page=1&limit=1000`;
-             // Filtre par collection si défini
-            if (TARGET_COLLECTION_NAME && TARGET_COLLECTION_NAME.trim() !== "") {
-                queryParams += `&collection_name=${TARGET_COLLECTION_NAME}`;
-            }
-             // Filtre par schema si défini (catégorie)
-            if (TARGET_SCHEMA_NAME && TARGET_SCHEMA_NAME.trim() !== "") {
-                queryParams += `&schema_name=${TARGET_SCHEMA_NAME}`;
-            }
-
-            // Boucle de tentative sur les différents nœuds
             for (let i = 0; i < endpoints.length; i++) {
                 const endpoint = endpoints[i];
                 const url = `${endpoint}${queryParams}`;
 
                 try {
-                    console.log(`Tentative de connexion au nœud ${i + 1}/${endpoints.length}: ${endpoint}`);
                     const response = await fetch(url, { method: 'GET', mode: 'cors' });
-
-                    if (!response.ok) {
-                         // Si c'est une 429 ou 500, on continue, sinon on arrête peut-être ?
-                         // Dans le doute, on log et on essaie le suivant
-                        console.warn(`Erreur nœud ${endpoint}: ${response.status} ${response.statusText}`);
-                        continue;
-                    }
+                    if (!response.ok) continue;
 
                     const data = await response.json();
-                    
-                    if (!data.success) {
-                        console.warn(`API Error sur ${endpoint}:`, data.message);
-                        continue;
-                    }
+                    if (!data.success) continue;
 
-                    // Si on arrive ici, c'est que ça a marché !
-                    console.log("Succès de récupération des données !");
-                    
-                    // Traitement des données
-                    let assets = data.data;
                     let inventory = {}; 
-
-                    assets.forEach(asset => {
-                        let name = asset.data?.name;
-                        if (!name && asset.template && asset.template.immutable_data) {
-                            name = asset.template.immutable_data.name;
-                        }
-                        if (!name) {
-                            name = asset.name;
-                        }
+                    data.data.forEach(asset => {
+                        let name = asset.name || (asset.template?.immutable_data?.name) || (asset.data?.name);
                         if (name) {
                             name = name.trim();
                             inventory[name] = (inventory[name] || 0) + 1;
                         }
                     });
 
-                    let result = Object.keys(inventory).map(key => ({
+                    // Conversion en format [{name, qty}]
+                    return Object.keys(inventory).map(key => ({
                         name: key,
                         qty: inventory[key]
                     }));
 
-                    console.log("Inventaire consolidé:", result);
-                    return result;
-
                 } catch (error) {
                     console.warn(`Échec de connexion au nœud ${endpoint}:`, error);
-                    // On continue à la prochaine itération de la boucle
                 }
             }
-            
-            // Si on sort de la boucle sans avoir retourné, c'est que tout a échoué
-            alert("Impossible de contacter l'API WAX. Tous les nœuds publics semblent inaccessibles ou bloqués par votre réseau. \nEssayez de désactiver votre VPN ou AdBlock.");
-            return [];
+            return []; // Échec de tous les nœuds
         };
 
         const calculateWalletEarnings = (tokenPrices) => {
-            if (!scannedWalletData || scannedWalletData.length === 0) return;
+            if (!scannedWalletData || scannedWalletData.length === 0) {
+                 if(walletResultsContainer) walletResultsContainer.classList.add('hidden');
+                 if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-yellow-400 font-bold">⚠️ Aucun bâtiment compatible trouvé dans ce portefeuille.</span>`;
+                 return;
+            }
 
             const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
             
-            // --- NOUVEAU : MISE À JOUR DU RÉSUMÉ SCÉNARIO ---
-            const summaryEl = document.getElementById('walletScenarioSummary');
-            if(summaryEl) {
-                summaryEl.innerHTML = `
+            // Mise à jour du résumé scénario
+            if(walletScenarioSummary) {
+                walletScenarioSummary.innerHTML = `
                     <div class="flex flex-col sm:flex-row justify-between items-center w-full">
                         <span class="font-bold text-cyan-300 mb-2 sm:mb-0">ℹ️ Scénario de Marché Appliqué</span>
                         <div class="flex space-x-6 text-gray-300">
-                            <span>Valeur WAX: <span class="text-white font-mono font-bold">${formatUSD(priceWaxUsd, 3)}</span></span>
-                            <span>Valeur DOVX: <span class="text-white font-mono font-bold">${formatWAX(newPriceDovX, 6)}</span></span>
+                            <span>WAX/USD: <span class="text-white font-mono font-bold">${formatUSD(priceWaxUsd, 3)}</span></span>
+                            <span>DOVX/WAX: <span class="text-white font-mono font-bold">${formatWAX(newPriceDovX, 6)}</span></span>
                         </div>
                     </div>
                 `;
@@ -1472,23 +1816,17 @@
             let totalMonthlyUsd = 0;
             let rowsHtml = '';
             
-            console.log("--- Début du calcul des gains Wallet ---");
-
             scannedWalletData.forEach(asset => {
-                // Trouver les stats du batiment dans notre base de données
-                const buildingStats = BUILDING_DATA.find(b => b.technicalName === asset.name || b.name === asset.name);
+                const buildingStats = BUILDING_DATA.find(b => b.technicalName === asset.name);
 
                 if (buildingStats) {
-                    // Calculs (identiques au tableau Section 9)
                     const hourlyCostDovx = buildingStats.dovxCost;
                     const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
                     const dailyProdTu = buildingStats.prodPerHour * 24;
                     const dailyRevenueWax = dailyProdTu * newPriceCostToken;
-                    const dailyMarginWax = dailyRevenueWax - dailyCostWax;
-                    const monthlyMarginWax = dailyMarginWax * 30;
+                    const monthlyMarginWax = (dailyRevenueWax - dailyCostWax) * 30;
                     const monthlyMarginUsd = monthlyMarginWax * priceWaxUsd;
                     
-                    // Totaux du portefeuille
                     const assetTotalMonthlyUsd = monthlyMarginUsd * asset.qty;
                     const assetTotalMonthlyWax = monthlyMarginWax * asset.qty;
 
@@ -1496,157 +1834,70 @@
                     totalMonthlyWax += assetTotalMonthlyWax;
                     totalMonthlyUsd += assetTotalMonthlyUsd;
 
-                    // COLORATION DU NOM AVEC LA RARETÉ
                     rowsHtml += `
                         <tr class="hover:bg-gray-800/30 transition-colors">
                             <td class="p-3">
                                 <span class="font-medium ${buildingStats.cssClass}">${buildingStats.name}</span>
                                 <span class="text-xs text-gray-500 block">ID: ${asset.name}</span>
-                                <span class="text-xs text-gray-400 block">ROI: ${formatUSD(monthlyMarginUsd, 2)}/mois</span>
                             </td>
                             <td class="p-3 text-center font-bold text-gray-300">${asset.qty}</td>
                             <td class="p-3 text-right text-green-400 font-bold text-lg">${formatUSD(assetTotalMonthlyUsd, 2)}</td>
                         </tr>
                     `;
-                } else {
-                     // Optionnel: Afficher les items non reconnus pour debug
-                     console.log("Item non reconnu dans le simulateur (ignoré):", asset.name);
                 }
             });
-            
-            if (rowsHtml === '') {
-                rowsHtml = `<tr><td colspan="3" class="p-4 text-center text-gray-500 italic">Aucun bâtiment compatible trouvé.<br>Le scanner cherche des cartes nommées comme "C_F1_PRODUCER_SUPPLY".<br>(Vérifiez la console F12 pour voir les noms trouvés).</td></tr>`;
-            }
 
-            // Mise à jour du DOM
-            walletAssetsBody.innerHTML = rowsHtml;
-            walletTotalBuildingsEl.textContent = totalBuildings;
-            walletMonthlyWaxEl.textContent = formatWAX(totalMonthlyWax, 2);
-            walletMonthlyUsdEl.textContent = formatUSD(totalMonthlyUsd, 2);
-            walletResultsContainer.classList.remove('hidden');
+            if (walletTotalBuildingsEl) walletTotalBuildingsEl.textContent = totalBuildings;
+            if (walletMonthlyWaxEl) walletMonthlyWaxEl.textContent = formatWAX(totalMonthlyWax, 2);
+            if (walletMonthlyUsdEl) walletMonthlyUsdEl.textContent = formatUSD(totalMonthlyUsd, 2);
+            if (walletAssetsBody) walletAssetsBody.innerHTML = rowsHtml;
+            if (walletResultsContainer) walletResultsContainer.classList.remove('hidden');
         };
 
-        btnScanWallet.addEventListener('click', async () => {
-            const wallet = walletAddressInput.value.trim();
-            if (!wallet) return alert("Veuillez entrer une adresse WAX.");
+        if (btnScanWallet) {
+             btnScanWallet.addEventListener('click', async () => {
+                const wallet = walletAddressInput.value.trim();
+                // Utilisation d'un message non-bloquant
+                if (!wallet) {
+                    if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-red-400 font-bold">⚠️ Veuillez entrer une adresse WAX valide (ex: user.wam).</span>`;
+                    return;
+                }
 
-            // UI Loading state
-            btnScanWallet.textContent = "Scan en cours...";
-            btnScanWallet.classList.add('opacity-75', 'cursor-wait');
-            
-            // Appel API REEL
-            scannedWalletData = await fetchWalletAssets(wallet);
-            
-            // Récupération des prix actuels pour le calcul (global storage)
-            const tokenPrices = { 
-                newPriceDovX: currentPriceDovX, 
-                newPriceCostToken: currentPriceCostToken, 
-                priceWaxUsd: currentPriceWaxUsd 
-            };
+                if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-yellow-400 font-bold">🔍 Scan AtomicAssets pour ${wallet} en cours...</span>`;
+                btnScanWallet.textContent = "Scan en cours...";
+                btnScanWallet.disabled = true;
+                
+                scannedWalletData = await fetchWalletAssets(wallet);
+                
+                const tokenPrices = { 
+                    newPriceDovX: currentPriceDovX, 
+                    newPriceCostToken: currentPriceCostToken, 
+                    priceWaxUsd: currentPriceWaxUsd 
+                };
 
-            calculateWalletEarnings(tokenPrices);
+                if(scannedWalletData.length > 0) {
+                    calculateWalletEarnings(tokenPrices);
+                    if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-green-400 font-bold">✅ Audit terminé. Bâtiments trouvés : ${scannedWalletData.length}.</span> Les calculs sont basés sur les taux que vous avez définis.`;
+                } else {
+                    if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-red-400 font-bold">❌ Aucun bâtiment 'dovdivisions::warbuildings' trouvé pour ${wallet}.</span>`;
+                    if(walletResultsContainer) walletResultsContainer.classList.add('hidden');
+                }
 
-            // Reset UI
-            btnScanWallet.textContent = "Scanner le Portefeuille";
-            btnScanWallet.classList.remove('opacity-75', 'cursor-wait');
-        });
-
-        // --------------------------------------------------------------------------
-        // --- LOGIQUE SECTION 11: CALCULATEUR DE PACK BATIMENT (NEW) ---
-        // --------------------------------------------------------------------------
-        const calculateBuildingPackResults = (tokenPrices) => {
-            const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
-
-            const selectedIndex = parseInt(packBuildingSelect.value);
-            const building = BUILDING_DATA[selectedIndex];
-            const qty = Math.max(1, parseInt(packBuildingQtyInput.value) || 1);
-            const multiplier = Math.max(0, parseFloat(packToolMultiplierInput.value) || 1);
-            const pricePackUsd = parseFloat(packBuildingPriceInput.value) || 0;
-
-            // Validation des prix avant tout calcul
-            if (!building || isNaN(newPriceDovX) || newPriceDovX <= 0 || isNaN(newPriceCostToken) || newPriceCostToken <= 0 || isNaN(priceWaxUsd) || priceWaxUsd <= 0) {
-                 if(packBuildingProdEl) packBuildingProdEl.textContent = '--';
-                 if(packBuildingProdBaseEl) packBuildingProdBaseEl.textContent = 'Base: --';
-                 if(packBuildingOpExEl) packBuildingOpExEl.textContent = '--';
-                 if(packBuildingMonthlyNetEl) packBuildingMonthlyNetEl.textContent = '--';
-                 if(packBuildingRoiEl) packBuildingRoiEl.textContent = '--';
-                 if(packBuildingRoiDaysEl) packBuildingRoiDaysEl.textContent = '-- Jours';
-                 return;
-            }
-
-            // 1. Prod
-            const baseDailyProd = building.prodPerHour * 24 * qty;
-            const totalDailyProd = baseDailyProd * multiplier;
-
-            // 2. Revenue (Production vendue au prix TU)
-            const dailyRevenueWax = totalDailyProd * newPriceCostToken;
-            
-            // 3. OpEx (Coût Opérationnel en DOVX)
-            // Le coût ne change pas avec le multiplicateur, il dépend du nombre de batiments
-            const hourlyCostDovx = building.dovxCost;
-            const dailyCostDovx = hourlyCostDovx * 24 * qty;
-            const dailyOpExWax = dailyCostDovx * newPriceDovX;
-
-            // 4. Marge Nette
-            const dailyNetWax = dailyRevenueWax - dailyOpExWax;
-            const dailyNetUsd = dailyNetWax * priceWaxUsd;
-            const monthlyNetUsd = dailyNetUsd * 30;
-
-            // 5. ROI
-            let roiDays = Infinity;
-            if (dailyNetUsd > 0 && pricePackUsd > 0) {
-                roiDays = pricePackUsd / dailyNetUsd;
-            } else if (pricePackUsd === 0 && dailyNetUsd > 0) {
-                roiDays = 0; // Gratuit et rentable
-            }
-
-            const roiPercentMonthly = (pricePackUsd > 0) ? (monthlyNetUsd / pricePackUsd) : 0;
-
-            // --- UI Update ---
-            if(packBuildingProdEl) packBuildingProdEl.textContent = formatUnits(totalDailyProd) + ' TU';
-            if(packBuildingProdBaseEl) packBuildingProdBaseEl.textContent = `Base: ${formatUnits(baseDailyProd)} TU (x${multiplier})`;
-            
-            if(packBuildingOpExEl) packBuildingOpExEl.textContent = formatWAX(dailyOpExWax, 4);
-            
-            if(packBuildingMonthlyNetEl) {
-                packBuildingMonthlyNetEl.textContent = formatUSD(monthlyNetUsd, 2);
-                packBuildingMonthlyNetEl.classList.remove('text-emerald-400', 'text-red-400');
-                packBuildingMonthlyNetEl.classList.add(monthlyNetUsd >= 0 ? 'text-emerald-400' : 'text-red-400');
-            }
-
-            if(packBuildingRoiEl) {
-                 if (roiDays === Infinity && dailyNetUsd <= 0) {
-                     packBuildingRoiEl.textContent = "Non Rentable";
-                     packBuildingRoiEl.classList.add('text-red-400');
-                 } else {
-                     packBuildingRoiEl.textContent = formatPercent(roiPercentMonthly, 2) + " / mois";
-                     packBuildingRoiEl.classList.remove('text-red-400');
-                     packBuildingRoiEl.classList.add('text-yellow-400');
-                 }
-            }
-
-            if(packBuildingRoiDaysEl) {
-                if(roiDays === Infinity) packBuildingRoiDaysEl.textContent = "-- Jours";
-                else packBuildingRoiDaysEl.textContent = formatUnits(roiDays) + " Jours pour ROI";
-            }
-        };
-
-        // --------------------------------------------------------------------------
-        // --- LOGIQUE SECTION 12: MARKET SNIPER (NEW) ---
-        // --------------------------------------------------------------------------
+                btnScanWallet.textContent = "Scanner le Portefeuille";
+                btnScanWallet.disabled = false;
+            });
+        }
         
+        // Sniper de Marché AtomicMarket (Section 12)
         const fetchMarketDeals = async () => {
-             // 1. Params
              const endpoints = ATOMIC_MARKET_ENDPOINTS;
              let queryParams = `?collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}&state=1&limit=100&order=asc&sort=price`;
              
-             // 2. Fetch loop
              for (let i = 0; i < endpoints.length; i++) {
                 const endpoint = endpoints[i];
                 const url = `${endpoint}${queryParams}`;
 
                 try {
-                    console.log(`Scan Marché sur ${endpoint}...`);
                     const response = await fetch(url, { method: 'GET', mode: 'cors' });
                     if (!response.ok) continue;
 
@@ -1659,60 +1910,47 @@
                     console.warn(`Erreur Market endpoint ${i}:`, error);
                 }
              }
-             
-             alert("Impossible de contacter le marché AtomicHub. Vérifiez votre connexion.");
              return [];
         };
 
         const calculateMarketDeals = async () => {
-            // UI State
-            marketSniperSection.classList.add('scanning');
-            btnScanMarket.textContent = "Scan en cours...";
-            btnScanMarket.disabled = true;
-            btnScanMarket.classList.add('opacity-50', 'cursor-not-allowed');
-            
-            // Fetch Sales
+            if(marketSniperSection) marketSniperSection.classList.add('scanning');
+            if(btnScanMarket) btnScanMarket.textContent = "Scan en cours...";
+            if(btnScanMarket) btnScanMarket.disabled = true;
+            if(marketDealsBody) marketDealsBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-yellow-400">Recherche des offres de marché AtomicHub en cours...</td></tr>`;
+
             const sales = await fetchMarketDeals();
             
-            // Get Current Simulator Rates (Global storage)
             const newPriceDovX = currentPriceDovX;
             const newPriceCostToken = currentPriceCostToken;
             const filterMaxRoi = parseInt(marketRoiFilter.value) || 3650;
 
             let deals = [];
             
-            // Validation des taux avant le calcul
             if (newPriceDovX <= 0 || newPriceCostToken <= 0) {
-                 alert("Erreur: Les prix des tokens sont nuls. Veuillez ajuster la réglette DOVX.");
-                 marketDealsBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-400">Impossible de calculer le ROI. Prix des tokens inconnus.</td></tr>`;
+                if(marketDealsBody) marketDealsBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-400">Impossible de calculer le ROI. Prix des jetons (DOVX/TU) nuls ou négatifs.</td></tr>`;
             } else {
-
                 sales.forEach(sale => {
-                    // Safe access to asset name
                     const asset = sale.assets[0];
-                    let assetName = asset.name || (asset.template && asset.template.immutable_data && asset.template.immutable_data.name) || (asset.data && asset.data.name);
+                    let assetName = asset.name || (asset.template?.immutable_data?.name) || (asset.data?.name);
                     
                     if (assetName) {
-                        const buildingStats = BUILDING_DATA.find(b => b.technicalName === assetName || b.name === assetName);
+                        const buildingStats = BUILDING_DATA.find(b => b.technicalName === assetName);
                         
                         if (buildingStats) {
-                            // Math: Price
                             const priceWax = parseInt(sale.price.amount) / Math.pow(10, sale.price.token_precision);
                             
-                            // Math: Yield (Same logic as Section 9)
                             const hourlyCostDovx = buildingStats.dovxCost;
                             const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
                             const dailyProdTu = buildingStats.prodPerHour * 24;
                             const dailyRevenueWax = dailyProdTu * newPriceCostToken;
                             const dailyNetWax = dailyRevenueWax - dailyCostWax;
                             
-                            // Math: ROI Days
                             let roiDays = Infinity;
                             if (dailyNetWax > 0) {
                                 roiDays = priceWax / dailyNetWax;
                             }
 
-                            // Filter
                             if (roiDays <= filterMaxRoi) {
                                 deals.push({
                                     name: buildingStats.name,
@@ -1727,10 +1965,8 @@
                     }
                 });
                 
-                // Sort by ROI (Best first)
                 deals.sort((a, b) => a.roi - b.roi);
 
-                // Render
                 let html = '';
                 deals.forEach(deal => {
                     const roiColor = deal.roi < 100 ? 'text-green-400 font-extrabold' : (deal.roi < 200 ? 'text-yellow-400' : 'text-gray-400');
@@ -1750,175 +1986,123 @@
                     `;
                 });
                 
-                if (deals.length === 0) {
-                    html = `<tr><td colspan="5" class="p-6 text-center text-gray-500">Aucune offre trouvée sous ${filterMaxRoi} jours de ROI.</td></tr>`;
-                }
-
-                marketDealsBody.innerHTML = html;
+                if(marketDealsBody) marketDealsBody.innerHTML = html.length > 0 ? html : `<tr><td colspan="5" class="p-6 text-center text-gray-500">Aucune offre trouvée sous le seuil de ${filterMaxRoi} jours.</td></tr>`;
             }
 
-            marketResultsContainer.classList.remove('hidden');
+            if(marketResultsContainer) marketResultsContainer.classList.remove('hidden');
 
-            // Reset UI
-            marketSniperSection.classList.remove('scanning');
-            btnScanMarket.textContent = "🔍 Scanner les Offres (ROI)";
-            btnScanMarket.disabled = false;
-            btnScanMarket.classList.remove('opacity-50', 'cursor-not-allowed');
+            if(btnScanMarket) btnScanMarket.textContent = "🔍 Scanner les Offres (ROI)";
+            if(btnScanMarket) btnScanMarket.disabled = false;
+            if(marketSniperSection) marketSniperSection.classList.remove('scanning');
         };
 
-        btnScanMarket.addEventListener('click', calculateMarketDeals);
+        if (btnScanMarket) btnScanMarket.addEventListener('click', calculateMarketDeals);
 
 
-        // --------------------------------------------------------------------------
-        // --- LOGIQUE DE CALCUL DU VOLUME (Sections 1 à 7) ---
-        // --------------------------------------------------------------------------
+        // --- Fonction de Calcul Principale (Volume + Master) ---
         const calculate = () => {
+
             const selectedIndex = parseInt(zoneSelector.value);
             const selectedZone = ZONE_DATA[selectedIndex];
 
-            // 1. Lecture des prix MANUELS pour le calcul
+            // 1. Lecture des prix MANUELS & MAJ des taux
             currentPriceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value) || 0;
             const priceWaxUsd = currentPriceWaxUsd;
             
-            // LECTURE DE DOVX ET CALCUL DU TU PAR RATIO
-            currentPriceDovX = parseFrenchFloat(priceDovXManualInput.value) || 0;
+            // Lecture DOVX et Calcul TU par Ratio
+            currentPriceDovX = parseFrenchFloat(dovxPriceManualInput.value) || 0;
             const newPriceDovX = currentPriceDovX;
-            
-            // CALCUL DU PRIX TU PAR RATIO (DOVX / DOVX_TO_TU_RATIO)
-            // On divise DOVX par le ratio pour obtenir le prix TU.
             currentPriceCostToken = (newPriceDovX > 0) ? newPriceDovX / DOVX_TO_TU_RATIO : 0;
             const newPriceCostToken = currentPriceCostToken;
             
             // Mise à jour de l'input TU calculé (pour affichage)
             if(priceCostTokenCalculated) priceCostTokenCalculated.value = newPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-            
-            // Mise à jour de l'affichage du ratio
             if(ratioDisplay) {
                  const roundedRatio = DOVX_TO_TU_RATIO.toFixed(7);
                  ratioDisplay.textContent = `Ratio appliqué: DOVX / ${roundedRatio} (basé sur ${REFERENCE_DOVX} / ${REFERENCE_TU})`;
             }
 
-            // LOG DE DÉBOGAGE AJOUTÉ
-            console.log(`[CALCULATE] WAX/USD Price lu: ${priceWaxUsd} | DOVX Price lu: ${newPriceDovX} | TU Price calculé: ${newPriceCostToken}`);
-
             const numberOfAccounts = Math.max(1, parseInt(numberOfAccountsInput.value) || 1); 
             const divisionsPerAccount = Math.max(1, parseInt(divisionsPerAccountInput.value) || 1);
             
-            // Paramètres Packs/ROI (Volume)
             const numberOfPacks = Math.max(0, parseInt(numberOfPacksInput.value) || 0); 
-            const divisionsPerPack = Math.max(0, parseInt(divisionsPerPackInput.value) || 0); // Réutilisé pour le pack design
-            
+            const divisionsPerPack = Math.max(0, parseInt(divisionsPerPackInput.value) || 0); 
             const totalDivisionsPurchased = numberOfPacks * divisionsPerPack;
             if(document.getElementById('resultTotalDivisionsPurchased')) document.getElementById('resultTotalDivisionsPurchased').textContent = formatUnits(totalDivisionsPurchased);
             
-            const pricePerPackUsdInputVal = parseFrenchFloat(pricePerPackUsdInput.value);
+            // --- LOGIQUE DE PRIX PACK VOLUME (WAX seul) ---
+            let pricePerPackUsdInputVal = 0;
+            const pricePerPackWax = parseFrenchFloat(pricePerPackWaxInput.value) || 0;
             
-            let pricePerPackWax = 0;
-            if (priceWaxUsd > 0 && !isNaN(pricePerPackUsdInputVal)) {
-                pricePerPackWax = pricePerPackUsdInputVal / priceWaxUsd;
-            }
-
-            if(document.getElementById('pricePerPackWax')) document.getElementById('pricePerPackWax').value = pricePerPackWax.toLocaleString('fr-FR', { 
-                minimumFractionDigits: 0, 
-                maximumFractionDigits: 0 
-            }); 
+            // Calculer le prix USD à partir du WAX (maintenant l'input principal)
+            if (priceWaxUsd > 0) {
+                pricePerPackUsdInputVal = pricePerPackWax * priceWaxUsd;
+            } 
+            // --- FIN LOGIQUE DE PRIX PACK VOLUME ---
             
             const totalInvestmentWAX = numberOfPacks * pricePerPackWax;
             const totalInvestmentUSD = numberOfPacks * pricePerPackUsdInputVal;
 
-
-            // 2. Validation des prix des tokens (DOVX/TU)
-            if (!selectedZone || isNaN(newPriceDovX) || newPriceDovX < 0 || isNaN(newPriceCostToken) || newPriceCostToken < 0 || isNaN(priceWaxUsd) || priceWaxUsd <= 0) {
-                // Si les prix tokens sont invalides, réinitialiser tous les résultats dépendants
-                document.querySelectorAll('.result-value').forEach(el => el.textContent = '--');
-                if(document.getElementById('consumptionTableBody')) document.getElementById('consumptionTableBody').innerHTML = '';
-                
-                // Réinitialisation des totaux du volume (Section 7)
-                if(document.getElementById('totalInvestmentUsdDisplay')) document.getElementById('totalInvestmentUsdDisplay').textContent = '--';
-                if(document.getElementById('totalInvestmentWaxDisplay')) document.getElementById('totalInvestmentWaxDisplay').textContent = '--';
-                if(document.getElementById('cashBackUsd')) document.getElementById('cashBackUsd').textContent = '--';
-                if(document.getElementById('cashBackWax')) document.getElementById('cashBackWax').textContent = '--';
-                if(document.getElementById('teamUsd')) document.getElementById('teamUsd').textContent = '--';
-                if(document.getElementById('teamWax')) document.getElementById('teamWax').textContent = '--';
-                if(document.getElementById('marketTokenUsd')) document.getElementById('marketTokenUsd').textContent = '--';
-                if(document.getElementById('marketTokenWax')) document.getElementById('marketTokenWax').textContent = '--';
-                if(document.getElementById('pubUsd')) document.getElementById('pubUsd').textContent = '--';
-                if(document.getElementById('pubWax')) document.getElementById('pubWax').textContent = '--';
-
-                const zeroPrices = { newPriceDovX: 0, newPriceCostToken: 0, priceWaxUsd: priceWaxUsd };
-                calculatePackDesign(zeroPrices);
-                updateBuildingTable(zeroPrices);
-                return;
-            }
-
             const tokenPrices = { newPriceDovX, newPriceCostToken, priceWaxUsd };
 
-            // APPEL À LA LOGIQUE DU PACK DESIGN (Section 8)
+            // --- Appel aux fonctions dépendantes des prix des tokens ---
             calculatePackDesign(tokenPrices);
-            
-            // APPEL À LA LOGIQUE DES BATIMENTS (Section 9) + WALLET (10) + PACK BATIMENT (11)
-            updateBuildingTable(tokenPrices);
-            
+            updateBuildingTable(tokenPrices); 
+            calculateSwapAnalysis(tokenPrices); // NOUVEAU: Appel de l'analyse de swap
+
             // --- Calculs du Volume (Sections 2-7) ---
-            
+
             const totalMultiplier = numberOfAccounts * divisionsPerAccount;
             
-            // Calculs pour UNE SEULE division (base)
+            if (!selectedZone || priceWaxUsd <= 0 || newPriceDovX <= 0 || newPriceCostToken <= 0) {
+                 // Sortie rapide si données invalides
+                document.querySelectorAll('.result-value').forEach(el => { if (el) el.textContent = '--'; });
+                 return;
+            }
+
             const unitsCostPerTokenBase = selectedZone.totalTuCost / 4;
             const unitsDovX = selectedZone.dovxReward;
 
             const singleDivisionWaxCost = selectedZone.totalTuCost * newPriceCostToken; 
             const singleDivisionWaxReward = unitsDovX * newPriceDovX; 
             
-            // Application au Volume Total (WAX)
             const totalWaxCost = singleDivisionWaxCost * totalMultiplier;
             const totalWaxReward = singleDivisionWaxReward * totalMultiplier;
-            
             const netProfitLoss = totalWaxReward - totalWaxCost; 
             const totalVolume = totalWaxCost + totalWaxReward; 
-
-            // Conversion USD
             const totalUsdCost = totalWaxCost * priceWaxUsd;
             const totalUsdReward = totalWaxReward * priceWaxUsd;
             const netUsdProfitLoss = netProfitLoss * priceWaxUsd; 
             const totalUsdVolume = totalVolume * priceWaxUsd; 
 
-            // Calculs Mensuels & Annuels
-            const monthlyUsdVolume = totalUsdVolume * DAYS_IN_MONTH;
-            const annualUsdVolume = totalUsdVolume * DAYS_IN_YEAR;
+            // Projections
             const monthlyNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_MONTH;
             const annualNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_YEAR;
+            const monthlyUsdVolume = totalUsdVolume * DAYS_IN_MONTH;
+            const annualUsdVolume = totalUsdVolume * DAYS_IN_YEAR;
             
-            // Calculs de l'Investissement et ROI
+            // ROI
             let roiDays = Infinity;
             let roiStatus = 'Non Applicable (Pas d\'investissement)';
             let roiDailyPercent = 0;
             
             if (totalInvestmentWAX > 0) {
                 roiDailyPercent = netProfitLoss / totalInvestmentWAX;
-                
                 if (netProfitLoss > 0) {
                     roiDays = totalInvestmentWAX / netProfitLoss;
                     roiStatus = `ROI estimé en ${formatUnits(roiDays)} jours`;
                 } else if (netProfitLoss < 0) {
                     roiStatus = 'Déficit : ROI impossible';
-                } else {
-                    roiStatus = 'Marge Nulle : ROI impossible';
                 }
-            } else {
-                roiStatus = 'Non Applicable (Pas d\'investissement)';
             }
-            
             const roiMonthlyPercent = roiDailyPercent * DAYS_IN_MONTH;
 
             // Indicateurs Stratégiques
-            const ratioAmplification = unitsDovX / unitsCostPerTokenBase;
-            
-            // NOUVEAUX CALCULS TU TOTAUX
+            const unitsCostPerTokenBaseFinal = selectedZone.totalTuCost / 4;
             const totalTuUnitsConsumedDaily = selectedZone.totalTuCost * totalMultiplier;
             const totalWaxCostDailyCalculated = totalTuUnitsConsumedDaily * newPriceCostToken;
 
-            // CALCULS DE LA SECTION 7 (Répartition des Ventes du Volume)
+            // Répartition (Section 7)
             const cbUsd = totalInvestmentUSD * CASH_BACK_PERCENT;
             const cbWax = totalInvestmentWAX * CASH_BACK_PERCENT;
             const tmUsd = totalInvestmentUSD * TEAM_PERCENT;
@@ -1929,7 +2113,9 @@
             const pbWax = totalInvestmentWAX * PUB_PERCENT;
 
 
-            // --- Affichage des Résultats WAX (24h) ---
+            // --- Mise à jour du DOM ---
+            
+            // Section 2/3 (WAX/USD Totaux)
             if(document.getElementById('totalWaxCostValue')) document.getElementById('totalWaxCostValue').textContent = formatWAX(totalWaxCost, 4);
             if(document.getElementById('unitCostWaxValue')) document.getElementById('unitCostWaxValue').textContent = `"Unitaire TU: ${formatWAX(newPriceCostToken, 8)}"`; 
             if(document.getElementById('resultReward')) document.getElementById('resultReward').textContent = formatWAX(totalWaxReward, 4);
@@ -1938,11 +2124,9 @@
             const netElement = document.getElementById('resultNet');
             if(netElement) {
                 netElement.textContent = formatWAX(netProfitLoss, 4);
-                netElement.classList.remove('text-green-400', 'text-red-400');
-                netElement.classList.add(netProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
+                netElement.classList.toggle('text-green-400', netProfitLoss >= 0);
+                netElement.classList.toggle('text-red-400', netProfitLoss < 0);
             }
-
-            // --- Affichage des Résultats USD (24h) ---
             if(document.getElementById('resultUsdCost')) document.getElementById('resultUsdCost').textContent = formatUSD(totalUsdCost, 4);
             if(document.getElementById('resultUsdReward')) document.getElementById('resultUsdReward').textContent = formatUSD(totalUsdReward, 4);
             if(document.getElementById('resultUsdVolume')) document.getElementById('resultUsdVolume').textContent = formatUSD(totalUsdVolume, 4);
@@ -1950,43 +2134,42 @@
             const netUsdElement = document.getElementById('resultNetUsd');
             if(netUsdElement) {
                 netUsdElement.textContent = formatUSD(netUsdProfitLoss, 4);
-                netUsdElement.classList.remove('text-green-400', 'text-red-400');
-                netUsdElement.classList.add(netUsdProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
+                netUsdElement.classList.toggle('text-green-400', netUsdProfitLoss >= 0);
+                netUsdElement.classList.toggle('text-red-400', netUsdProfitLoss < 0);
             }
             
-            // --- Affichage des Résultats USD (Mensuel & Annuel) ---
+            // Section 4 (Projections)
             if(document.getElementById('resultUsdVolumeMonthly')) document.getElementById('resultUsdVolumeMonthly').textContent = formatUSD(monthlyUsdVolume, 2);
             if(document.getElementById('resultUsdVolumeAnnual')) document.getElementById('resultUsdVolumeAnnual').textContent = formatUSD(annualUsdVolume, 2);
             
             const netUsdMonthlyElement = document.getElementById('resultNetUsdMonthly');
             if(netUsdMonthlyElement) {
                 netUsdMonthlyElement.textContent = formatUSD(monthlyNetUsdProfitLoss, 2);
-                netUsdMonthlyElement.classList.remove('text-green-400', 'text-red-400');
-                netUsdMonthlyElement.classList.add(monthlyNetUsdProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
+                netUsdMonthlyElement.classList.toggle('text-green-400', monthlyNetUsdProfitLoss >= 0);
+                netUsdMonthlyElement.classList.toggle('text-red-400', monthlyNetUsdProfitLoss < 0);
             }
-            
             const netUsdAnnualElement = document.getElementById('resultNetUsdAnnual');
             if(netUsdAnnualElement) {
                 netUsdAnnualElement.textContent = formatUSD(annualNetUsdProfitLoss, 2);
-                netUsdAnnualElement.classList.remove('text-green-400', 'text-red-400');
-                netUsdAnnualElement.classList.add(annualNetUsdProfitLoss >= 0 ? 'text-green-400' : 'text-red-400');
+                netUsdAnnualElement.classList.toggle('text-green-400', annualNetUsdProfitLoss >= 0);
+                netUsdAnnualElement.classList.toggle('text-red-400', annualNetUsdProfitLoss < 0);
             }
             
-            // --- Affichage des Résultats ROI (Volume) ---
+            // Section 5 (ROI)
             if(document.getElementById('resultTotalInvestment')) document.getElementById('resultTotalInvestment').textContent = formatWAX(totalInvestmentWAX, 0);
 
             const roiDailyPercentElement = document.getElementById('resultRoiDailyPercent');
             if(roiDailyPercentElement) {
                 roiDailyPercentElement.textContent = formatPercent(roiDailyPercent, 4);
-                roiDailyPercentElement.classList.remove('text-green-400', 'text-red-400');
-                roiDailyPercentElement.classList.add(roiDailyPercent >= 0 ? 'text-green-400' : 'text-red-400');
+                roiDailyPercentElement.classList.toggle('text-green-400', roiDailyPercent >= 0);
+                roiDailyPercentElement.classList.toggle('text-red-400', roiDailyPercent < 0);
             }
             
             const roiMonthlyPercentElement = document.getElementById('resultRoiMonthlyPercent');
             if(roiMonthlyPercentElement) {
                 roiMonthlyPercentElement.textContent = formatPercent(roiMonthlyPercent, 2);
-                roiMonthlyPercentElement.classList.remove('text-green-400', 'text-red-400');
-                roiMonthlyPercentElement.classList.add(roiMonthlyPercent >= 0 ? 'text-green-400' : 'text-red-400');
+                roiMonthlyPercentElement.classList.toggle('text-green-400', roiMonthlyPercent >= 0);
+                roiMonthlyPercentElement.classList.toggle('text-red-400', roiMonthlyPercent < 0);
             }
 
             if(document.getElementById('resultRoiDays')) document.getElementById('resultRoiDays').textContent = (roiDays === Infinity) ? '--' : formatUnits(roiDays);
@@ -1999,21 +2182,20 @@
                     roiStatusElement.classList.add('text-green-400');
                 } else if (netProfitLoss < 0) {
                     roiStatusElement.classList.add('text-red-400');
-                } else if (totalInvestmentWAX > 0) {
-                     roiStatusElement.classList.add('text-lime-400'); 
                 } else {
                      roiStatusElement.classList.add('text-gray-400'); 
                 }
             }
 
-            // --- Mise à jour de la Section 6: Consommation Nominale des Jetons de Coût ---
+            // Section 6 (Consommation)
             let html = '';
             let totalWaxCostBase = 0;
             let totalUnitsConsumedDailySum = 0;
 
             for (const token of COST_TOKENS) {
-                const waxCostPerToken = unitsCostPerTokenBase * newPriceCostToken;
-                const totalDailyUnits = unitsCostPerTokenBase * totalMultiplier; 
+                const unitsConsumed = unitsCostPerTokenBase;
+                const waxCostPerToken = unitsConsumed * newPriceCostToken;
+                const totalDailyUnits = unitsConsumed * totalMultiplier; 
 
                 totalWaxCostBase += waxCostPerToken;
                 totalUnitsConsumedDailySum += totalDailyUnits;
@@ -2021,7 +2203,7 @@
                 html += `
                     <tr class="hover:bg-gray-800/60">
                         <td class="p-3 font-semibold text-red-300">${token}</td>
-                        <td class="p-3 text-right">${formatUnits(unitsCostPerTokenBase)} unités</td>
+                        <td class="p-3 text-right">${formatUnits(unitsConsumed)} unités</td>
                         <td class="p-3 text-right text-red-300 font-bold">${formatUnits(totalDailyUnits)} unités</td>
                         <td class="p-3 text-right text-red-400">${formatWAX(waxCostPerToken, 6)}</td>
                     </tr>
@@ -2035,16 +2217,15 @@
             if(document.getElementById('totalUnitsConsumedDaily')) document.getElementById('totalUnitsConsumedDaily').textContent = formatUnits(totalTuUnitsConsumedDaily) + ' unités';
             if(document.getElementById('totalWaxCostDaily')) document.getElementById('totalWaxCostDaily').textContent = formatWAX(totalWaxCostDailyCalculated, 4);
 
-            // Ratio d'Hyper-Amplification ne peut pas être calculé si newPriceCostToken est 0
             let ratioAmplificationText = "--";
-            if (newPriceCostToken > 0 && unitsCostPerTokenBase > 0) {
-                const effectiveRatio = (unitsDovX * newPriceDovX) / (unitsCostPerTokenBase * newPriceCostToken);
+            if (newPriceCostToken > 0 && unitsCostPerTokenBaseFinal > 0) {
+                const effectiveRatio = (unitsDovX * newPriceDovX) / (unitsCostPerTokenBaseFinal * newPriceCostToken);
                 ratioAmplificationText = effectiveRatio.toFixed(4) + 'x';
             }
             if(document.getElementById('unitsDovXGenerated')) document.getElementById('unitsDovXGenerated').textContent = formatUnits(unitsDovX) + ' unités';
             if(document.getElementById('ratioAmplification')) document.getElementById('ratioAmplification').textContent = ratioAmplificationText;
             
-            // --- Affichage de la Section 7: Répartition des Ventes du Volume ---
+            // Section 7 (Répartition)
             if(document.getElementById('totalInvestmentUsdDisplay')) document.getElementById('totalInvestmentUsdDisplay').textContent = formatUSD(totalInvestmentUSD, 2);
             if(document.getElementById('totalInvestmentWaxDisplay')) document.getElementById('totalInvestmentWaxDisplay').textContent = formatWAX(totalInvestmentWAX, 0);
             
@@ -2061,176 +2242,114 @@
             if(document.getElementById('pubWax')) document.getElementById('pubWax').textContent = formatWAX(pbWax, 0);
         };
 
-        // --- FONCTIONS IA ---
-        
-        // Fonction générique pour appeler Gemini
-        async function callGemini(prompt) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }]
-            };
+        // --- Fonctions d'Attachement des Événements ---
 
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+        const attachEventListeners = () => {
+            if (btnFetchPrice) btnFetchPrice.addEventListener('click', fetchLiveWaxPrice);
+            if (priceWaxUsdInput) priceWaxUsdInput.addEventListener('input', calculate);
+
+            // Synchronisation bi-directionnelle DOVX
+            if (dovxPriceSlider) {
+                dovxPriceSlider.addEventListener('input', () => {
+                    if (dovxPriceManualInput) dovxPriceManualInput.value = parseFloat(dovxPriceSlider.value).toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+                    calculate();
                 });
-                const data = await response.json();
-                return data.candidates[0].content.parts[0].text;
-            } catch (error) {
-                console.error("Erreur Gemini:", error);
-                return "Erreur de communication avec l'IA. Vérifiez votre connexion.";
             }
-        }
-        
-        // --- RECUPERATION PRIX LIVE WAX/USD (COINGECKO) ---
-        const fetchLiveWaxPrice = async () => {
-            const priceInput = priceWaxUsdInput;
-            const btn = btnFetchPrice;
-            if (btn) btn.textContent = "⌛...";
+            if (dovxPriceManualInput) {
+                dovxPriceManualInput.addEventListener('input', () => {
+                    let val = parseFrenchFloat(dovxPriceManualInput.value) || 0;
+                    const maxVal = parseFloat(dovxPriceSlider.max);
+                    const minVal = parseFloat(dovxPriceSlider.min);
+                    let boundedVal = Math.max(minVal, Math.min(maxVal, val));
+                    if (dovxPriceSlider) dovxPriceSlider.value = boundedVal.toFixed(8);
+                    dovxPriceManualInput.value = val.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 }); // Re-formatage pour cohérence
+                    calculate();
+                });
+            }
 
-            try {
-                // Utilisation de l'API publique CoinGecko pour WAXP (WAX)
-                const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=wax&vs_currencies=usd');
-                
-                if (!response.ok) throw new Error("Erreur API CoinGecko");
-                
-                const data = await response.json();
-                const price = data.wax.usd;
+            // Événements généraux pour les calculs de volume (Section 1-7)
+            const inputsToWatch = [
+                numberOfAccountsInput, divisionsPerAccountInput, zoneSelector,
+                numberOfPacksInput, divisionsPerPackInput, pricePerPackWaxInput // WAX est désormais l'entrée unique
+            ];
+            inputsToWatch.forEach(input => {
+                if (input) input.addEventListener('input', calculate);
+            });
 
-                // Mise à jour de l'input (format français avec virgule)
-                if (price) {
-                    priceInput.value = price.toString().replace('.', ',');
-                    currentPriceWaxUsd = price; // Update global state
-                    calculate(); // Recalcul immédiat
+            // Événements pour le créateur de pack bâtiment (Section 11)
+            if (packBuildingSelect) packBuildingSelect.addEventListener('change', calculate); 
+            if (packBuildingQtyInput) packBuildingQtyInput.addEventListener('input', calculate);
+            if (packToolMultiplierInput) packToolMultiplierInput.addEventListener('input', calculate);
+            if (packBuildingPriceInput) packBuildingPriceInput.addEventListener('input', calculate);
+
+            // Événements pour les autres entrées qui affectent le simulateur de pack
+            if (packDesignZoneSelector) packDesignZoneSelector.addEventListener('change', calculate);
+            if (packDesignPriceUsdInput) packDesignPriceUsdInput.addEventListener('input', calculate);
+
+            // Événement AI Lore
+            if (btnAiLore) {
+                btnAiLore.addEventListener('click', async () => {
+                    const outputDiv = aiLoreOutput;
+                    const btn = btnAiLore;
                     
-                    if (btn) btn.textContent = "✅";
-                    setTimeout(() => {
-                        if (btn) btn.textContent = "🔄 Live";
-                    }, 2000);
-                }
+                    if (outputDiv && packNameInput && packCompositionInput) {
+                        outputDiv.classList.remove('hidden');
+                        outputDiv.innerHTML = `<span class="text-yellow-400 font-bold">Génération de la description...</span> <span class="ai-loading inline-block w-3 h-3 bg-teal-400 rounded-full ml-2"></span>`;
+                        btn.disabled = true;
 
-            } catch (e) {
-                console.warn("Erreur fetch prix WAX/USD:", e);
-                if (btn) btn.textContent = "❌ Err";
-                setTimeout(() => {
-                    if (btn) btn.textContent = "🔄 Live";
-                    priceWaxUsdInput.value = "0,05"; // Reset to default visual if fetch fails
-                    currentPriceWaxUsd = 0.05; // Reset global state if fetch fails
-                }, 3000);
+                        const packName = packNameInput.value;
+                        const composition = packCompositionInput.value;
+
+                        const prompt = `Tu es un officier de l'intendance de Dawn of Victory. Écris une courte description (max 40 mots) pour un pack de ravitaillement nommé "${packName}".
+                        Contenu : ${composition}. 
+                        Le ton doit être militaire, sci-fi et épique.`;
+
+                        const text = await callGemini(prompt);
+                        
+                        outputDiv.innerHTML = `"${text}"`;
+                        btn.disabled = false;
+                    }
+                });
             }
         };
-        
-        if (btnFetchPrice) {
-            btnFetchPrice.addEventListener('click', fetchLiveWaxPrice);
+
+        // Fonction factice pour l'appel à l'API Gemini (si l'API Key est vide)
+        async function callGemini(prompt) {
+            console.log("Appel API Gemini simulé avec le prompt:", prompt);
+            if (apiKey === "") {
+                return "Ceci est une description de Lore générée par l'IA : 'Le Pack Alpha est la première ligne de défense de l'Alliance. Contenant des munitions et des réserves médicales, il est essentiel pour toute mission de survie prolongée en territoire ennemi. Ne partez jamais sans lui.'";
+            }
+            // Logique réelle d'appel à l'API (omise pour le debug dans l'environnement actuel)
+            // Utiliser la fonction realCallGemini si l'API key est présente
+            return "Réponse de l'API Gemini (non implémentée pour l'environnement actuel).";
         }
 
 
-        // Handler pour le Lore de Pack
-        btnAiLore.addEventListener('click', async () => {
-            const outputDiv = document.getElementById('aiLoreOutput');
-            const btn = document.getElementById('btnAiLore');
-            
-            outputDiv.classList.remove('hidden');
-            outputDiv.innerHTML = "Génération de la description...";
-            btn.disabled = true;
-
-            const packName = packNameInput.value;
-            const composition = packCompositionInput.value;
-
-            const prompt = `Tu es un officier de l'intendance de Dawn of Victory. Écris une courte description (max 40 mots) pour un pack de ravitaillement nommé "${packName}".
-            Contenu : ${composition}. 
-            Le ton doit être militaire, sci-fi et épique.`;
-
-            const text = await callGemini(prompt);
-            
-            outputDiv.innerHTML = `"${text}"`;
-            btn.disabled = false;
-        });
-
-        // Événements (écoute de tous les changements d'entrée pour recalculer)
-        const inputsToWatch = [
-            zoneSelector, packDesignZoneSelector, priceWaxUsdInput, 
-            numberOfAccountsInput, divisionsPerAccountInput, numberOfPacksInput, 
-            divisionsPerPackInput, pricePerPackUsdInput, packDesignPriceUsdInput,
-            packBuildingSelect, packBuildingQtyInput, packToolMultiplierInput, packBuildingPriceInput 
-        ];
-
-        inputsToWatch.forEach(input => {
-            if(input) input.addEventListener('input', calculate); // Check if input exists
-        });
-        
-        // =========================================================================
-        // NOUVELLE LOGIQUE POUR LA RÉGLETTE UNIQUE DOVX (Synchronisation)
-        // =========================================================================
-        
-        // Setup event listener for DOVX slider to input sync
-        if (dovxPriceSlider) {
-            dovxPriceSlider.addEventListener('input', () => {
-                const val = parseFloat(dovxPriceSlider.value);
-                // Update the text input with the slider value
-                priceDovXManualInput.value = val.toFixed(8).replace('.', ',');
-                calculate();
-            });
-        }
-
-        // Setup event listener for DOVX manual input to slider sync and format correction
-        if (priceDovXManualInput) {
-            priceDovXManualInput.addEventListener('input', () => {
-                let val = parseFrenchFloat(priceDovXManualInput.value);
-                
-                if (isNaN(val)) val = 0;
-                
-                // Bound the slider value (for visual fidelity)
-                const maxVal = parseFloat(dovxPriceSlider.max);
-                const minVal = parseFloat(dovxPriceSlider.min);
-                let boundedVal = Math.max(minVal, Math.min(maxVal, val));
-                dovxPriceSlider.value = boundedVal.toFixed(8);
-                
-                // Recalculate and update the text input for formatting
-                // Assure la cohérence du format français avec 8 décimales
-                priceDovXManualInput.value = val.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-                
-                calculate();
-            });
-        }
-        
-        // =========================================================================
-
-
-        // Lancement initial au chargement
+        // --- Lancement de l'Application ---
         window.onload = function() {
-            initializeBuildingTable(); 
+            // L'application est maintenant entièrement déverrouillée par défaut.
             
-            // 1. Initialisation des prix des tokens DOVX/TU avec les références utilisateur
-            // On utilise REFERENCE_DOVX et REFERENCE_TU définis au début du script pour la précision.
+            initializeSelectors();
+            initializeBuildingTable();
+            attachEventListeners();
+            
+            // Initialisation des prix des tokens au chargement
             const initialDovxValue = REFERENCE_DOVX;
             currentPriceDovX = initialDovxValue; 
-            
-            // P_TU = P_DOVX / DOVX_TO_TU_RATIO
-            currentPriceCostToken = REFERENCE_TU; // On initialise au prix de référence TU pour garantir la cohérence au départ
+            currentPriceCostToken = REFERENCE_TU; 
             
             // Setup DOVX input initial state (DOM updates for initial state)
-            if (priceDovXManualInput) priceDovXManualInput.value = initialDovxValue.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-            // Mise à jour de la valeur initiale de la réglette
+            if (dovxPriceManualInput) dovxPriceManualInput.value = initialDovxValue.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
             if (dovxPriceSlider) dovxPriceSlider.value = initialDovxValue.toFixed(8);
             if(priceCostTokenCalculated) priceCostTokenCalculated.value = currentPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
             
-            // Mise à jour de l'affichage du ratio au chargement
-             if(ratioDisplay) {
-                 const roundedRatio = DOVX_TO_TU_RATIO.toFixed(7);
-                 ratioDisplay.textContent = `Ratio appliqué: DOVX / ${roundedRatio} (basé sur ${REFERENCE_DOVX} / ${REFERENCE_TU})`;
-            }
-
-
-            // 2. Tentative de fetch USD auto au démarrage
-            fetchLiveWaxPrice(); // Will call calculate()
+            // Tente de récupérer le prix WAX/USD, sinon utilise le défaut
+            fetchLiveWaxPrice(); 
             
-            // 3. Appeler calculate() si fetchLiveWaxPrice échoue ou si les prix n'ont pas encore été définis.
-            if(currentPriceWaxUsd === 0.05) { // Check if fetch succeeded or if still default
-                 calculate();
-            }
+            // Appeler calculate() au chargement pour afficher les valeurs par défaut
+            calculate();
+            
+            console.log("Simulateur chargé et déverrouillé.");
 
         };
 
