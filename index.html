@@ -955,60 +955,8 @@
 
             </div>
             
-            <!-- NOUVELLE SOUS-SECTION 13.3: SUIVI DES PAIRES -->
-            <h4 class="text-lg font-semibold text-gray-300 mt-8 mb-3 border-t border-gray-700 pt-4">13.3 Suivi des Paires de Trading sur Alcor</h4>
-            
-            <p class="text-sm text-gray-400 mb-4">
-                Liste en temps réel de toutes les paires actives sur Alcor Exchange impliquant les jetons DOV.
-            </p>
-            
-            <!-- Token Selection -->
-            <div id="alcorTokenSelection" class="mb-4 flex flex-wrap gap-3">
-                <!-- Buttons will be injected here -->
-            </div>
-            
-            <!-- Live Data Table -->
-            <div id="alcorPairsContainer" class="bg-slate-800/50 backdrop-blur-sm rounded-lg overflow-hidden border border-purple-500/20 min-h-[150px] relative">
-                <div id="alcorPairsLoading" class="hidden absolute inset-0 flex items-center justify-center bg-slate-900/70 z-10">
-                    <svg class="animate-spin h-5 w-5 text-purple-400 mr-3" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" class="opacity-25"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span class="text-purple-200">Chargement des paires...</span>
-                </div>
-                <div id="alcorPairsTable" class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead>
-                            <tr class="border-b border-purple-500/20 bg-slate-900/50">
-                                <th class="px-6 py-3 text-left text-purple-200 font-semibold">Paire</th>
-                                <th class="px-6 py-3 text-right text-purple-200 font-semibold">Prix</th>
-                                <th class="px-6 py-3 text-right text-purple-200 font-semibold">Liquidité (USD)</th>
-                                <th class="px-6 py-3 text-right text-purple-200 font-semibold">Vol. 24h (USD)</th>
-                                <th class="px-6 py-3 text-center text-purple-200 font-semibold">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="alcorPairsBody">
-                            <!-- Rempli par JS -->
-                        </tbody>
-                    </table>
-                </div>
-                <div id="alcorPairsError" class="hidden p-4 text-center text-red-400"></div>
-                <div id="alcorPairsEmpty" class="hidden p-4 text-center text-gray-400">Aucune paire trouvée pour le jeton sélectionné.</div>
-            </div>
+            <!-- NOUVELLE SOUS-SECTION 13.3: SUIVI DES PAIRES (BLOCK ENTIÈREMENT RETIRÉ) -->
 
-        </div>
-
-        <!-- NOUVELLE SECTION 14: WIDGET MOONPAY -->
-        <div id="moonpaySection" class="card p-6 rounded-xl border border-lime-500/30 mt-8 relative overflow-hidden hidden">
-            <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-lime-400 flex items-center mb-4">
-                <span class="mr-2">💳</span> 14. Acheter du WAX (MoonPay Widget)
-            </h3>
-            
-            <p class="text-sm text-gray-400 mb-6">
-                Utilisez l'interface d'achat pour obtenir des jetons WAX directement avec votre carte bancaire, sans quitter le simulateur.
-                <br><span class="text-xs text-red-400 italic">*Ceci est une intégration de démonstration (Sandbox). Remplacez la clé API pour le mode Production.*</span>
-            </p>
-
-            <div id="moonpayWidgetContainer" class="w-full">
-                <!-- L'iframe MoonPay sera injecté ici par JS -->
-            </div>
         </div>
 
 
@@ -1084,7 +1032,7 @@
         const PUB_PERCENT = 0.10;
         
         const COST_TOKENS = ["DOV-H", "DOV-R", "DOV-S", "DOV-F"];
-        const DOV_TOKENS = ["DOVX", ...COST_TOKENS]; // Jetons DOV pour le suivi (Section 13.3)
+        // La liste DOV_TOKENS a été retirée.
 
         // --- DONNÉES SWAP ALCOR (LIVE API) ---
         // Noms des marchés Alcor pour les paires TARGET/WAX et DOVX/TARGET
@@ -1099,9 +1047,14 @@
             { token: "SHING", marketWax: "SHING-shingtoken_WAX-eosio.token", marketDovx: "DOVX-dov.token_SHING-shingtoken" } 
         ];
 
+        // --- CACHES GLOBAUX ---
         let scannedWalletData = []; // Stocke les données réelles/simulées du wallet (Section 10)
-        let allAlcorPairsCache = []; // Cache pour les données brutes de toutes les paires Alcor (Section 13.3)
-        let selectedAlcorToken = DOV_TOKENS[0]; // Jeton DOVX par défaut pour le suivi (Section 13.3)
+        // allAlcorPairsCache a été retiré.
+        // selectedAlcorToken a été retiré.
+        
+        let walletCache = {}; // Cache pour les résultats du scan de portefeuille
+        let walletCacheTime = 0;
+        const WALLET_CACHE_DURATION = 30000; // 30 secondes
 
         // --- Fonctions de Formatage (Utility Functions) ---
 
@@ -1159,39 +1112,49 @@
              return value / 100;
         };
         
+        /** Simple rate limit utility */
+        const throttle = (ms = 200) => new Promise(r => setTimeout(r, ms));
         
-        // --- Fonctions d'API Alcor (Maintenues ici) ---
+        
+        // --- Fonctions d'API Alcor ---
         
         /**
-         * Fonction utilitaire pour interroger l'API Alcor avec backoff exponentiel (Utilisée pour 13.1)
+         * Remplacement robuste de fetchAlcorMarketPrice — forcer v2 et parse résilient
          * @param {string} marketName - Nom du marché Alcor (e.g., TLM-alien.worlds_WAX-eosio.token)
-         * @returns {Promise<Object|null>}
+         * @returns {Promise<number|null>} Le prix au format nombre ou null.
          */
         const fetchAlcorMarketPrice = async (marketName) => {
-            const url = `${ALCOR_API_URL}/markets/${marketName}`;
+            if (!marketName) return null;
+            // Utiliser explicitement la V2 (cohérence avec fetchAllAlcorPairs)
+            const encodedName = encodeURIComponent(marketName);
+            const url = `${ALCOR_API_URL}/v2/markets/${encodedName}`;
             const maxRetries = 3;
             let delay = 500;
 
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fetch(url, { method: 'GET', mode: 'cors' });
-                    if (response.ok) {
-                        const data = await response.json();
-                        // Retourne le last_price directement
-                        if (data && data.last_price) {
-                            return parseFloat(data.last_price);
-                        }
-                        // Si le marché n'existe pas ou la réponse est vide
-                        return null; 
+                    if (!response.ok) {
+                        // si 404 -> marché introuvable, retourner null rapidement
+                        if (response.status === 404) return null;
+                        // pour d'autres codes, throw pour passer au retry
+                        throw new Error(`Status ${response.status}`);
                     }
-                } catch (error) {
-                    // console.log(`Tentative ${i + 1} échouée pour ${marketName}.`);
+                    const data = await response.json();
+                    // Plusieurs versions d'API peuvent renvoyer 'last_price' ou 'price' ou 'data.last_price'
+                    const lastPrice = (data && (data.last_price ?? data.price ?? data.data?.last_price)) ?? null;
+                    if (lastPrice === null || lastPrice === undefined) return null;
+                    const parsed = parseFloat(lastPrice);
+                    return isFinite(parsed) ? parsed : null;
+                } catch (err) {
+                    // backoff exponentiel
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
                 }
-                await new Promise(resolve => setTimeout(resolve, delay));
-                delay *= 2; 
             }
             return null;
         };
+        // FIN Remplacement robuste de fetchAlcorMarketPrice
 
         // Fonction d'arbitrage DOVX (Section 13.1)
         const fetchAlcorPrices = async () => {
@@ -1220,6 +1183,9 @@
                     impliedWaxValue: impliedWaxValue,
                     isMissingData: isMissingData
                 });
+                
+                // Utiliser le throttle ici pour éviter le rate-limit pour les appels consécutifs de l'arbitrage
+                await throttle(200);
             });
 
             await Promise.all(fetchPromises);
@@ -1526,12 +1492,7 @@
         const lpDovxTuPriceSpanEl = document.getElementById('lpDovxTuPriceSpan');
         const lpTuDovxPriceSpanEl = document.getElementById('lpTuDovxPriceSpan');
 
-        // NOUVELLES RÉFÉRENCES DOM POUR SUIVI PAIRES (Section 13.3)
-        const alcorTokenSelection = document.getElementById('alcorTokenSelection');
-        const alcorPairsBody = document.getElementById('alcorPairsBody');
-        const alcorPairsLoading = document.getElementById('alcorPairsLoading');
-        const alcorPairsError = document.getElementById('alcorPairsError');
-        const alcorPairsEmpty = document.getElementById('alcorPairsEmpty');
+        // Les références DOM pour la section 13.3 (Suivi des paires) ont été retirées.
         
         
         // --- Fonctions d'Initialisation ---
@@ -1555,55 +1516,11 @@
              if (zoneSelector) zoneSelector.value = 0;
              if (packDesignZoneSelector) packDesignZoneSelector.value = 0;
              
-             // Initialisation des boutons de sélection de jetons (Section 13.3)
-             initializeAlcorPairsSelector();
+             // L'initialisation des boutons de sélection de jetons (Section 13.3) a été retirée.
         };
         
-        // Initialise la sélection de jetons pour le suivi (Section 13.3)
-        const initializeAlcorPairsSelector = () => {
-            if (!alcorTokenSelection) return;
-            alcorTokenSelection.innerHTML = '';
-
-            DOV_TOKENS.forEach(token => {
-                const button = document.createElement('button');
-                button.textContent = token;
-                button.classList.add('px-4', 'py-2', 'rounded-lg', 'font-semibold', 'transition-all', 'text-sm');
-                button.setAttribute('data-token', token);
-                
-                // Mettre à jour l'état visuel initial
-                if (token === selectedAlcorToken) {
-                    button.classList.add('bg-purple-500', 'text-white', 'shadow-lg', 'shadow-purple-500/50');
-                } else {
-                    button.classList.add('bg-slate-700', 'text-purple-200', 'hover:bg-slate-600');
-                }
-
-                button.addEventListener('click', () => {
-                    handleTokenChange(token);
-                });
-
-                alcorTokenSelection.appendChild(button);
-            });
-        };
-        
-        // Change le jeton sélectionné et filtre les paires (Section 13.3)
-        const handleTokenChange = (token) => {
-            selectedAlcorToken = token;
-            
-            // Mise à jour visuelle des boutons
-            const buttons = alcorTokenSelection.querySelectorAll('button');
-            buttons.forEach(button => {
-                const buttonToken = button.getAttribute('data-token');
-                button.classList.remove('bg-purple-500', 'text-white', 'shadow-lg', 'shadow-purple-500/50');
-                button.classList.add('bg-slate-700', 'text-purple-200', 'hover:bg-slate-600');
-                if (buttonToken === selectedAlcorToken) {
-                    button.classList.remove('bg-slate-700', 'text-purple-200', 'hover:bg-slate-600');
-                    button.classList.add('bg-purple-500', 'text-white', 'shadow-lg', 'shadow-purple-500/50');
-                }
-            });
-            
-            // Filtrer le cache des paires
-            filterAlcorPairs(allAlcorPairsCache, selectedAlcorToken);
-        };
+        // La fonction initializeAlcorPairsSelector a été retirée.
+        // La fonction handleTokenChange a été retirée.
 
 
          // Met à jour la quantité d'un bâtiment et déclenche le recalcul des totaux utilisateur.
@@ -2068,102 +1985,8 @@
              if (lpTuDovxPriceSpanEl) lpTuDovxPriceSpanEl.textContent = formatUnits(tuToDovxPrice);
         };
         
-        // --- NOUVEAU: Fonctions de suivi des Paires Alcor (Section 13.3) ---
-        
-        // Fonction pour formater M, K, etc. (pris du code React de l'utilisateur)
-        const formatNumber = (num, decimals = 2) => {
-             if (isNaN(num) || !isFinite(num)) return '0';
-             if (num >= 1e6) return (num / 1e6).toFixed(decimals) + 'M';
-             if (num >= 1e3) return (num / 1e3).toFixed(decimals) + 'K';
-             return num.toFixed(decimals);
-         };
-
-        // 1. Récupère toutes les paires depuis l'API Alcor V2
-        const fetchAllAlcorPairs = async () => {
-            if (alcorPairsLoading) alcorPairsLoading.classList.remove('hidden');
-            if (alcorPairsError) alcorPairsError.classList.add('hidden');
-            
-            const url = `${ALCOR_API_URL}/v2/markets?limit=1000&swap_enabled=true`;
-            
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error('Erreur lors de la récupération des données Alcor V2.');
-                }
-                
-                const data = await response.json();
-                allAlcorPairsCache = data.rows || [];
-                
-                // Filtrer et afficher le jeton par défaut (DOVX)
-                filterAlcorPairs(allAlcorPairsCache, selectedAlcorToken);
-                
-            } catch (error) {
-                console.error("Erreur Alcor Pairs Finder:", error);
-                if (alcorPairsError) {
-                    alcorPairsError.textContent = 'Impossible de récupérer les paires Alcor. Vérifiez l\'API.';
-                    alcorPairsError.classList.remove('hidden');
-                }
-                filterAlcorPairs([], selectedAlcorToken); // Afficher vide en cas d'erreur
-            } finally {
-                if (alcorPairsLoading) alcorPairsLoading.classList.add('hidden');
-            }
-        };
-
-        // 2. Filtre et affiche les paires pour un jeton donné
-        const filterAlcorPairs = (allData, token) => {
-            if (alcorPairsBody) alcorPairsBody.innerHTML = '';
-            if (alcorPairsEmpty) alcorPairsEmpty.classList.add('hidden');
-
-            const filtered = allData.filter(pair => {
-                const base = pair.base?.symbol?.name || '';
-                const quote = pair.quote?.symbol?.name || '';
-                return base === token || quote === token;
-            });
-            
-            // Trier par liquidité (descendant)
-            filtered.sort((a, b) => (b.liquidity || 0) - (a.liquidity || 0));
-            
-            if (filtered.length === 0) {
-                 if (alcorPairsEmpty) {
-                     alcorPairsEmpty.textContent = `Aucune paire trouvée pour ${token}.`;
-                     alcorPairsEmpty.classList.remove('hidden');
-                 }
-                 return;
-            }
-            
-            // Construire le HTML du tableau
-            let html = '';
-            filtered.forEach(pair => {
-                const baseName = pair.base?.symbol?.name || '';
-                const quoteName = pair.quote?.symbol?.name || '';
-                const baseContract = pair.base?.symbol?.contract || '';
-                const pairName = `${baseName}/${quoteName}`;
-                const price = pair.last_price ? parseFloat(pair.last_price) : 0;
-                
-                html += `
-                    <tr class="border-b border-slate-700/50 hover:bg-purple-500/10 transition-colors">
-                        <td class="px-6 py-4 font-mono text-white">${pairName}</td>
-                        <td class="px-6 py-4 text-right text-slate-300">${price ? price.toFixed(8) : '--'}</td>
-                        <td class="px-6 py-4 text-right text-slate-300">${formatUSD(pair.liquidity || 0, 0)}</td>
-                        <td class="px-6 py-4 text-right text-slate-300">${formatUSD(pair.volume24h_usd || 0, 0)}</td>
-                        <td class="px-6 py-4 text-center">
-                            <a
-                                href="https://alcor.exchange/trade/${pair.market_id}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="inline-block px-4 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors text-xs"
-                            >
-                                Trader
-                            </a>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            if (alcorPairsBody) alcorPairsBody.innerHTML = html;
-        };
-        
-        // --- Fin: Fonctions de suivi des Paires Alcor ---
+        // La fonction fetchAllAlcorPairs a été retirée.
+        // La fonction filterAlcorPairs a été retirée.
 
         // --- Fonctions de Calcul Global ---
 
@@ -2428,7 +2251,6 @@
             calculateLpResults(tokenPrices);     // Section 13.2
             
             // Note: Sniper (Section 12) et Arbitrage (Section 13.1) sont déclenchés par bouton
-
         };
         
         // Fonction pour gérer l'appel Gemini API pour le Lore
@@ -2456,7 +2278,6 @@
             aiLoreOutput.classList.remove('text-red-400');
             aiLoreOutput.classList.add('text-gray-300');
             aiLoreOutput.textContent = "Génération du Lore par l'IA en cours... Veuillez patienter.";
-            aiLoreOutput.classList.remove('hidden');
             btnAiLore.disabled = true;
             btnAiLore.classList.add('ai-loading');
 
@@ -2492,6 +2313,7 @@
                 aiLoreOutput.classList.remove('text-gray-300');
                 aiLoreOutput.classList.add('text-red-400');
             } finally {
+                aiLoreOutput.classList.remove('hidden');
                 btnAiLore.disabled = false;
                 btnAiLore.classList.remove('ai-loading');
             }
@@ -2534,14 +2356,33 @@
              }
         };
         
-        // Fonction de gestion du scan du wallet (Section 10)
+        /**
+         * Fonction de gestion du scan du wallet (Section 10) - Optimisée avec Pagination et Cache.
+         */
         const handleWalletScan = async () => {
             const walletAddress = walletAddressInput.value.trim().toLowerCase();
             if (!walletAddress) {
-                // Remplacé alert() par une boite de message temporaire si nécessaire, mais ici on le laisse dans la console
                 console.error("Veuillez entrer une adresse WAX valide (ex: user.wam).");
                 return;
             }
+            
+            // --- 1. VÉRIFICATION DU CACHE ---
+            const now = Date.now();
+            if (now - walletCacheTime < WALLET_CACHE_DURATION && walletCache[walletAddress]) {
+                console.log("[WALLET] Cache utilisé.");
+                scannedWalletData = walletCache[walletAddress];
+                // Mise à jour rapide de l'UI avec le cache
+                calculateWalletEarnings({ 
+                    newPriceDovX: currentPriceDovX, 
+                    newPriceCostToken: currentPriceCostToken, 
+                    priceWaxUsd: currentPriceWaxUsd 
+                });
+                walletTotalBuildingsEl.textContent = scannedWalletData.length.toLocaleString();
+                walletResultsContainer.classList.remove('hidden');
+                return;
+            }
+            // --- FIN CACHE CHECK ---
+
 
             if(btnScanWallet) {
                 btnScanWallet.disabled = true;
@@ -2552,52 +2393,63 @@
             scannedWalletData = [];
             walletAssetsBody.innerHTML = '';
             
-            const limit = 1000;
-            let page = 1;
+            const limit = 100; // La limite d'assets AtomicAssets est 100
             let totalAssets = 0;
             let fetchSuccessful = false;
             
             // Boucle pour essayer différents endpoints en cas d'échec
             for (const endpoint of ATOMIC_ENDPOINTS) {
-                const baseAssetUrl = `${endpoint}?collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}&owner=${walletAddress}&limit=${limit}`;
-                page = 1; // Réinitialiser la page pour chaque endpoint
-                scannedWalletData = []; // Vider les données partielles
-                totalAssets = 0;
-                
+                let page = 1; 
+                let endpointAssets = []; 
+
                 while (true) {
+                     const baseAssetUrl = `${endpoint}?collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}&owner=${walletAddress}&limit=${limit}`;
                      const url = `${baseAssetUrl}&page=${page}`;
+
                      try {
                          const response = await fetch(url);
+                         
+                         // Si l'endpoint ne répond pas (ou renvoie 4xx/5xx), on arrête ce endpoint.
+                         if (!response.ok) {
+                            throw new Error(`HTTP Status ${response.status}`);
+                         }
+                         
                          const data = await response.json();
                          
                          if (data.success && data.data) {
                              if (data.data.length > 0) {
-                                 scannedWalletData.push(...data.data);
+                                 endpointAssets.push(...data.data);
                                  totalAssets += data.data.length;
                                  
+                                 // Si la taille de la réponse est inférieure à la limite, c'est la dernière page
                                  if (data.data.length < limit) {
                                      fetchSuccessful = true;
-                                     break; // Fin de l'asset loading pour cet endpoint
+                                     break; 
                                  }
                                  page++;
+                                 await throttle(100); // Ralentir l'appel de page
                              } else {
-                                 fetchSuccessful = true; // Succès de l'API mais pas d'assets ou fin de la liste
+                                 fetchSuccessful = true; // API successful but no more assets
                                  break;
                              }
                          } else {
-                             // L'API répond mais signale un échec (ex: 404, 500)
+                             // L'API répond mais signale un échec interne
                              throw new Error(`API Error: ${data.message || 'Unknown API response error'}`);
                          }
                      } catch (error) {
-                         console.error(`Erreur lors de la récupération des assets AtomicAssets (Endpoint ${endpoint}):`, error);
-                         // Continuer à essayer le prochain endpoint
+                         console.error(`[WALLET SCAN] Endpoint ${endpoint} failure:`, error.message);
+                         // On passe au prochain endpoint
                          break; 
                      }
                 }
                 
-                if (fetchSuccessful) break; // Sortir de la boucle des endpoints si le fetch est réussi
+                if (fetchSuccessful) {
+                    scannedWalletData = endpointAssets;
+                    break; // Sortir de la boucle des endpoints si le fetch est réussi
+                }
             }
 
+            // --- 2. TRAITEMENT POST-FETCH ---
             if(btnScanWallet) {
                 btnScanWallet.disabled = false;
                 btnScanWallet.textContent = 'Scanner le Portefeuille';
@@ -2614,6 +2466,11 @@
                  return;
             }
             
+            // Écriture du cache après succès
+            walletCache = {}; 
+            walletCache[walletAddress] = scannedWalletData;
+            walletCacheTime = now;
+
             // Calculer les gains avec les données récupérées
             calculateWalletEarnings({ 
                 newPriceDovX: currentPriceDovX, 
@@ -2621,10 +2478,10 @@
                 priceWaxUsd: currentPriceWaxUsd 
             });
 
-            walletTotalBuildingsEl.textContent = totalAssets.toLocaleString();
+            walletTotalBuildingsEl.textContent = scannedWalletData.length.toLocaleString();
             walletResultsContainer.classList.remove('hidden');
 
-            if (totalAssets === 0) {
+            if (scannedWalletData.length === 0) {
                 walletAssetsBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-400">Aucun bâtiment de production DovDivision trouvé.</td></tr>`;
                 walletScenarioSummary.textContent = "Aucun actif trouvé. Vos gains mensuels sont de 0 $ pour cette simulation.";
             }
@@ -2644,8 +2501,20 @@
              const groupedAssets = {};
              scannedWalletData.forEach(asset => {
                  const templateId = asset.template_id;
-                 const buildingTemplate = BUILDING_DATA.find(b => templateId.toString().includes(b.rarityCode + '_F')); 
+                 const buildingTemplate = BUILDING_DATA.find(b => asset.template_id.toString().includes(b.rarityCode + '_F')); 
                  
+                 // Fallback pour trouver le bâtiment par nom si l'ID ne suffit pas (plus robuste)
+                 if (!buildingTemplate && asset.data?.name) {
+                     const rarity = asset.data.rarity || asset.template.immutable_data.rarity;
+                     const typeName = asset.data.name;
+                     // Tentative de mapping du nom complet au type connu (ex: Fuel Refinery)
+                     const matchedBuilding = BUILDING_DATA.find(b => 
+                        typeName.includes(b.rarity) && (b.type === 'DOV-F' || b.type === 'DOV-H' || b.type === 'DOV-R' || b.type === 'DOV-S')
+                    );
+                    if (matchedBuilding) buildingTemplate = matchedBuilding;
+                 }
+
+
                  if (!buildingTemplate) return; 
 
                  if (!groupedAssets[templateId]) {
@@ -2718,7 +2587,9 @@
 
         };
         
-        // Fonction de gestion du Sniper de Marché (Section 12)
+        /**
+         * Fonction de gestion du Sniper de Marché (Section 12) - Optimisée avec Pagination et Multi-endpoint
+         */
         const handleMarketScan = async () => {
             if (!currentPriceDovX || !currentPriceCostToken || !currentPriceWaxUsd) {
                 console.error("Veuillez définir les prix WAX/USD, DOVX/WAX et TU/WAX (Section 1).");
@@ -2735,58 +2606,83 @@
 
             const maxRoiDays = parseInt(marketRoiFilter.value) || 365;
             
-            const limit = 100;
-            let page = 1;
+            const limit = 100; // Limite d'AtomicMarket (souvent 100)
+            const maxPages = 5; // Limiter la profondeur à 5 pages (500 deals) pour la performance
             let allSales = [];
             let fetchSuccessful = false;
             
             // Boucle pour essayer différents endpoints
             for (const endpoint of ATOMIC_MARKET_ENDPOINTS) {
-                const baseMarketUrl = `${endpoint}?collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}&state=1&limit=${limit}&order=asc&sort=price`;
-                page = 1; 
-                allSales = [];
-                
-                while (true) {
-                     const url = `${baseMarketUrl}&page=${page}`;
-                     try {
-                         const response = await fetch(url);
-                         const data = await response.json();
-                         
-                         if (data.success && data.data && data.data.length > 0) {
-                             allSales.push(...data.data);
-                             fetchSuccessful = true;
-                             
-                             if (data.data.length < limit || page >= 5) break; 
-                             page++;
-                         } else {
-                             fetchSuccessful = true; 
-                             break;
-                         }
-                     } catch (error) {
-                         console.error(`Erreur lors de la récupération des ventes AtomicMarket (Endpoint ${endpoint}):`, error);
-                         break;
-                     }
+                let page = 1; 
+                let endpointSales = [];
+
+                while (page <= maxPages) {
+                    // Trier par prix pour trouver les deals rapidement
+                    const baseMarketUrl = `${endpoint}?collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}&state=1&limit=${limit}&order=asc&sort=price`;
+                    const url = `${baseMarketUrl}&page=${page}`;
+                    
+                    try {
+                        const response = await fetch(url);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP Status ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success && data.data) {
+                            if (data.data.length > 0) {
+                                endpointSales.push(...data.data);
+                                fetchSuccessful = true;
+                                
+                                if (data.data.length < limit) break; // Fin de la liste
+                                page++;
+                                await throttle(100); // Ralentir l'appel de page
+                            } else {
+                                fetchSuccessful = true; // API OK, mais plus d'actifs
+                                break;
+                            }
+                        } else {
+                            throw new Error(`API Error: ${data.message || 'Unknown API response error'}`);
+                        }
+                    } catch (error) {
+                        console.error(`[MARKET SCAN] Endpoint ${endpoint} failure:`, error.message);
+                        break;
+                    }
                 }
                 
-                if (fetchSuccessful) break; 
+                if (fetchSuccessful) {
+                    allSales = endpointSales;
+                    break; 
+                }
             }
             
             // Traitement des données
             let dealHtml = '';
             let profitableDeals = 0;
 
-            allSales.forEach(sale => {
+            // Tri par ROI ascendant (meilleur deal en premier)
+            allSales.sort((a, b) => {
+                // Simplification du calcul de ROI pour le tri (uniquement pour le classement visuel)
+                const priceA = parseFloat(a.listing_price) / (10 ** parseInt(a.listing_symbol.split(',')[0]));
+                const priceB = parseFloat(b.listing_price) / (10 ** parseInt(b.listing_symbol.split(',')[0]));
+                
+                // On pourrait chercher les templates ici, mais c'est lourd. On laisse le tri par prix pour rester rapide
+                return priceA - priceB;
+            });
+
+
+            for (const sale of allSales) {
                 const waxPrice = parseFloat(sale.listing_price) / (10 ** parseInt(sale.listing_symbol.split(',')[0]));
                 
                 // Trouver les stats du bâtiment correspondant
-                // Nous devons parcourir les assets de la vente, mais on suppose un seul asset pour ce type de vente
                 const asset = sale.assets[0];
-                if (!asset || !asset.template || !asset.template.immutable_data) return;
+                if (!asset || !asset.template || !asset.template.immutable_data) continue;
                 
                 const assetName = asset.template.immutable_data.name;
                 const buildingTemplate = BUILDING_DATA.find(b => assetName.includes(b.type)); 
                 
-                if (!buildingTemplate) return; 
+                if (!buildingTemplate) continue; 
 
                 // Calcul de la rentabilité (identique à Section 9)
                 const dailyCostDovx = buildingTemplate.dovxCost * 24;
@@ -2824,7 +2720,7 @@
                         </tr>
                     `;
                 }
-            });
+            }
 
             // Affichage des résultats
             if(marketDealsBody) {
@@ -2842,43 +2738,10 @@
                 btnScanMarket.textContent = '🔍 Scanner les Offres (ROI)';
                 marketSniperSection.classList.remove('scanning');
             }
-        };
-
-        // Fonction d'initialisation du widget MoonPay (Section 14)
-        const initializeMoonPayWidget = () => {
-             // Clé API MoonPay de DEMO (Sandbox)
-             const MOONPAY_API_KEY = 'pk_test_Yc1lYlG7E4yV7m5vH2N2J2F7b4Y2c3'; 
-             const MOONPAY_BASE_URL = 'https://buy-staging.moonpay.com/'; // Staging URL
-
-             const widgetContainer = document.getElementById('moonpayWidgetContainer');
-             if (!widgetContainer) return;
-             
-             // Adresse de destination WAX. Ici on utilise une adresse fictive pour la démo.
-             const defaultWalletAddress = walletAddressInput.value.trim() || 'user.wam';
-             
-             // Note: En production, le signature HMAC est OBLIGATOIRE pour la sécurité
-             const moonpayUrl = `${MOONPAY_BASE_URL}?apiKey=${MOONPAY_API_KEY}` +
-                                `&currencyCode=wax` +
-                                `&walletAddress=${defaultWalletAddress}` +
-                                `&theme=dark` +
-                                `&colorCode=%2300C3A0` + // Teal-like color
-                                `&currencyCode=wax` + 
-                                `&paymentMethod=credit_card`; // Forcing credit card first
-                                
-             const iframe = document.createElement('iframe');
-             iframe.src = moonpayUrl;
-             iframe.width = '100%';
-             iframe.height = '100%';
-             iframe.frameBorder = '0';
-             iframe.allow = 'payment';
-             
-             // Vider et injecter
-             widgetContainer.innerHTML = '';
-             widgetContainer.appendChild(iframe);
-             
-             // Afficher la section 14
-             const moonpaySection = document.getElementById('moonpaySection');
-             if (moonpaySection) moonpaySection.classList.remove('hidden');
+            
+            // NOTE SUR LE SNIPER : L'étape suivante serait d'implémenter executeBuy() et d'ajouter
+            // les vérifications de pool/honeypot proposées (secureCheckPool) juste avant l'appel à executeBuy.
+            // Pour l'instant, nous restons sur une fonction de scanning sécurisée.
         };
 
         // --- Listeners et Initialisation ---
@@ -2962,14 +2825,8 @@
             // Tente de récupérer le prix WAX/USD, sinon utilise le défaut
             fetchLiveWaxPrice(); 
             
-            // Lancer la récupération des paires Alcor au démarrage (Section 13.3)
-            fetchAllAlcorPairs(); 
-
-            // Initialiser l'analyse de swap au chargement également (similaire aux autres sections)
-            // handleArbitrageScan(); // L'arbitrage est coûteux en appels API. Mieux vaut le laisser se faire via le bouton après le calcul initial.
-            
-            // Initialisation du widget MoonPay
-            initializeMoonPayWidget();
+            // Lancement de l'analyse d'arbitrage (13.1) au démarrage
+            handleArbitrageScan(); 
 
             console.log("Simulateur chargé et déverrouillé.");
 
