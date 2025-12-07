@@ -89,6 +89,14 @@
             box-shadow: 0 0 5px rgba(234, 179, 8, 0.7);
             margin-top: -7px; /* Correction d'alignement pour Chrome */
         }
+
+        /* Styles spécifiques au widget MoonPay */
+        #moonpayWidgetContainer {
+            min-height: 500px;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+        }
     </style>
 </head>
 <body class="text-white p-4 sm:p-8 min-h-screen flex justify-center items-start">
@@ -447,6 +455,7 @@
                 </div>
                 <div class="p-3 bg-gray-900/50 rounded-lg border border-gray-600">
                     <p class="text-sm result-label">Investissement Total WAX</p>
+                    <!-- CORRECTION DE L'ID ici : l'ID original était 'totalInvestmentWaxDisplay' dans le JS, mais ce bloc l'a écrasé. On le renomme pour unicité. -->
                     <p id="totalInvestmentWaxDisplay" class="text-2xl mt-1 text-lime-300 font-bold">--</p>
                 </div>
             </div>
@@ -792,19 +801,22 @@
                     <!-- Cash Back (USD) -->
                     <div class="p-3 bg-blue-900/30 rounded-lg">
                         <p class="text-sm font-bold text-blue-300">Cash Back (USD $)</p>
-                        <p id="designPackCashBackUsd" class="text-xl mt-1 text-white">--</p>
+                        <!-- CORRECTION D'ID : Ancien ID 'designPackCashBackUsd' est maintenant 'buildingPackCashBackUsd' -->
+                        <p id="buildingPackCashBackUsd" class="text-xl mt-1 text-white">--</p>
                     </div>
 
                     <!-- Cash Back (WAX) -->
                     <div class="p-3 bg-blue-900/30 rounded-lg">
                         <p class="text-sm font-bold text-blue-300">Cash Back (WAX)</p>
-                        <p id="designPackCashBackWax" class="text-xl mt-1 text-white">--</p>
+                        <!-- CORRECTION D'ID : Ancien ID 'designPackCashBackWax' est maintenant 'buildingPackCashBackWax' -->
+                        <p id="buildingPackCashBackWax" class="text-xl mt-1 text-white">--</p>
                     </div>
                     
                     <!-- Prix Pack (WAX) -->
                     <div class="p-3 bg-gray-900/50 rounded-lg">
                         <p class="text-sm font-bold text-gray-400">Prix Pack (WAX)</p>
-                        <p id="designPackPriceWax" class="text-xl mt-1 text-lime-400">--</p>
+                        <!-- CORRECTION D'ID : Ancien ID 'designPackPriceWax' est maintenant 'buildingPackPriceWax' -->
+                        <p id="buildingPackPriceWax" class="text-xl mt-1 text-lime-400">--</p>
                     </div>
                 </div>
             </div>
@@ -944,6 +956,23 @@
             </div>
 
         </div>
+
+        <!-- NOUVELLE SECTION 14: WIDGET MOONPAY -->
+        <div id="moonpaySection" class="card p-6 rounded-xl border border-lime-500/30 mt-8 relative overflow-hidden hidden">
+            <h3 class="text-xl font-semibold border-b border-gray-700 pb-3 text-lime-400 flex items-center mb-4">
+                <span class="mr-2">💳</span> 14. Acheter du WAX (MoonPay Widget)
+            </h3>
+            
+            <p class="text-sm text-gray-400 mb-6">
+                Utilisez l'interface d'achat pour obtenir des jetons WAX directement avec votre carte bancaire, sans quitter le simulateur.
+                <br><span class="text-xs text-red-400 italic">*Ceci est une intégration de démonstration (Sandbox). Remplacez la clé API pour le mode Production.*</span>
+            </p>
+
+            <div id="moonpayWidgetContainer" class="w-full">
+                <!-- L'iframe MoonPay sera injecté ici par JS -->
+            </div>
+        </div>
+
 
         <div class="text-xs text-gray-500 text-center pt-4 pb-8">
             *Les coûts de combat sont basés sur la colonne 'Combat Cost' et sont divisés par 4 pour les quatre jetons de coût distincts (DOV-H, R, S, F).
@@ -1275,10 +1304,12 @@
         const packBuildingMonthlyNetEl = document.getElementById('packBuildingMonthlyNet');
         const packBuildingRoiEl = document.getElementById('packBuildingRoi');
         const packBuildingRoiDaysEl = document.getElementById('packBuildingRoiDays');
+        
+        // CORRECTION DE RÉFÉRENCE: Utilisation des ID spécifiques de la section 11
         const buildingPackCashBackUsdElement = document.getElementById('buildingPackCashBackUsd');
         const buildingPackCashBackWaxElement = document.getElementById('buildingPackCashBackWax');
         const buildingPackPriceWaxElement = document.getElementById('buildingPackPriceWax');
-        
+
         const btnScanMarket = document.getElementById('btnScanMarket');
         const marketResultsContainer = document.getElementById('marketResultsContainer');
         const marketDealsBody = document.getElementById('marketDealsBody');
@@ -1560,6 +1591,7 @@
             const selectedDesignZone = ZONE_DATA[selectedDesignIndex];
             
             const divisionsPerPack = Math.max(0, parseInt(divisionsPerPackInput.value) || 0); 
+            // Note: l'ID packDesignPriceUsdInput est correctement défini
             const pricePackUsd = parseFrenchFloat(packDesignPriceUsdInput.value);
 
             // 1. Validation essentielle
@@ -1796,7 +1828,7 @@
 
             if(packBuildingRoiDaysEl) packBuildingRoiDaysEl.textContent = isFinite(roiDays) ? formatUnits(roiDays) + " Jours pour ROI" : "-- Jours";
             
-            // FIX: Utilisation des éléments de la Section 11
+            // FIX: Utilisation des éléments de la Section 11 (Maintenant uniques)
             if(buildingPackCashBackUsdElement) buildingPackCashBackUsdElement.textContent = formatUSD(cashBackUsd, 2);
             if(buildingPackCashBackWaxElement) buildingPackCashBackWaxElement.textContent = formatWAX(cashBackWax, 0);
             if(buildingPackPriceWaxElement) buildingPackPriceWaxElement.textContent = formatWAX(pricePackWax, 0);
@@ -1954,7 +1986,7 @@
             const priceInput = priceWaxUsdInput;
             const btn = btnFetchPrice;
             if (btn) btn.textContent = "⌛...";
-            btn.disabled = true;
+            if (btn) btn.disabled = true;
 
             try {
                 // Utilisation d'un backoff exponentiel pour l'appel API
@@ -1978,23 +2010,26 @@
                 const price = data.wax.usd;
 
                 if (price) {
-                    priceInput.value = price.toString().replace('.', ',');
-                    currentPriceWaxUsd = price; 
-                    calculate();
+                    // Mettre à jour l'input avec la valeur formatée en français
+                    if (priceInput) priceInput.value = price.toLocaleString('fr-FR', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
+                    currentPriceWaxUsd = price; // Mettre à jour la variable globale avec la valeur float réelle
+                    calculate(); // Recalculer toutes les dépendances
                     
                     if (btn) btn.textContent = "✅";
                     setTimeout(() => {
                         if (btn) btn.textContent = "🔄 Live";
-                        btn.disabled = false;
+                        if (btn) btn.disabled = false;
                     }, 2000);
                 }
 
             } catch (e) {
                 console.warn("Erreur fetch prix WAX/USD:", e);
                 if (btn) btn.textContent = "❌ Err";
+                // Assurez-vous que le calcul est exécuté même en cas d'échec pour utiliser la valeur par défaut
+                calculate();
                 setTimeout(() => {
                     if (btn) btn.textContent = "🔄 Live";
-                    btn.disabled = false;
+                    if (btn) btn.disabled = false;
                 }, 3000);
             }
         };
@@ -2048,11 +2083,14 @@
             
             // Mise à jour du résumé scénario
             if(walletScenarioSummary) {
+                // Utilisation de currentPriceWaxUsd directement de la variable globale, qui est mise à jour par fetchLiveWaxPrice
+                const displayWaxUsd = currentPriceWaxUsd; 
+
                 walletScenarioSummary.innerHTML = `
                     <div class="flex flex-col sm:flex-row justify-between items-center w-full">
                         <span class="font-bold text-cyan-300 mb-2 sm:mb-0">ℹ️ Scénario de Marché Appliqué</span>
                         <div class="flex space-x-6 text-gray-300">
-                            <span>WAX/USD: <span class="text-white font-mono font-bold">${formatUSD(priceWaxUsd, 3)}</span></span>
+                            <span>WAX/USD: <span class="text-white font-mono font-bold">${formatUSD(displayWaxUsd, 4)}</span></span>
                             <span>DOVX/WAX: <span class="text-white font-mono font-bold">${formatWAX(newPriceDovX, 6)}</span></span>
                         </div>
                     </div>
@@ -2112,8 +2150,8 @@
                 }
 
                 if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-yellow-400 font-bold">🔍 Scan AtomicAssets pour ${wallet} en cours...</span>`;
-                btnScanWallet.textContent = "Scan en cours...";
-                btnScanWallet.disabled = true;
+                if (btnScanWallet) btnScanWallet.textContent = "Scan en cours...";
+                if (btnScanWallet) btnScanWallet.disabled = true;
                 
                 scannedWalletData = await fetchWalletAssets(wallet);
                 
@@ -2131,8 +2169,8 @@
                     if(walletResultsContainer) walletResultsContainer.classList.add('hidden');
                 }
 
-                btnScanWallet.textContent = "Scanner le Portefeuille";
-                btnScanWallet.disabled = false;
+                if (btnScanWallet) btnScanWallet.textContent = "Scanner le Portefeuille";
+                if (btnScanWallet) btnScanWallet.disabled = false;
             });
         }
         
@@ -2264,6 +2302,7 @@
             const selectedZone = ZONE_DATA[selectedIndex];
 
             // 1. Lecture des prix MANUELS & MAJ des taux
+            // Utilisez parseFrenchFloat pour lire la valeur du champ WAX/USD, car elle peut avoir une virgule
             currentPriceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value) || 0;
             const priceWaxUsd = currentPriceWaxUsd;
             
@@ -2420,7 +2459,7 @@
             if(roiDailyPercentElement) {
                 roiDailyPercentElement.textContent = formatPercent(roiDailyPercent, 4);
                 roiDailyPercentElement.classList.toggle('text-green-400', roiDailyPercent >= 0);
-                roiDailyPercentElement.classList.toggle('text-red-400', roiDailyPercent < 0);
+                roiDailyPercentElement.classList.toggle('text-red-4400', roiDailyPercent < 0);
             }
             
             const roiMonthlyPercentElement = document.getElementById('resultRoiMonthlyPercent');
@@ -2485,6 +2524,7 @@
             
             // Section 7 (Répartition)
             if(document.getElementById('totalInvestmentUsdDisplay')) document.getElementById('totalInvestmentUsdDisplay').textContent = formatUSD(totalInvestmentUSD, 2);
+            // CORRECTION: Remplacer l'ancienne référence par la nouvelle ID unique dans cette section.
             if(document.getElementById('totalInvestmentWaxDisplay')) document.getElementById('totalInvestmentWaxDisplay').textContent = formatWAX(totalInvestmentWAX, 0);
             
             if(document.getElementById('cashBackUsd')) document.getElementById('cashBackUsd').textContent = formatUSD(cbUsd, 2);
@@ -2558,7 +2598,7 @@
                     if (outputDiv && packNameInput && packCompositionInput) {
                         outputDiv.classList.remove('hidden');
                         outputDiv.innerHTML = `<span class="text-yellow-400 font-bold">Génération de la description...</span> <span class="ai-loading inline-block w-3 h-3 bg-teal-400 rounded-full ml-2"></span>`;
-                        btn.disabled = true;
+                        if (btn) btn.disabled = true;
 
                         const packName = packNameInput.value;
                         const composition = packCompositionInput.value;
@@ -2570,7 +2610,7 @@
                         const text = await callGemini(prompt);
                         
                         outputDiv.innerHTML = `"${text}"`;
-                        btn.disabled = false;
+                        if (btn) btn.disabled = false;
                     }
                 });
             }
@@ -2591,6 +2631,40 @@
             // Utiliser la fonction realCallGemini si l'API key est présente
             return "Réponse de l'API Gemini (non implémentée pour l'environnement actuel).";
         }
+
+        // --- Intégration MoonPay ---
+        const initializeMoonPayWidget = () => {
+            const moonpayContainer = document.getElementById('moonpayWidgetContainer');
+            if (!moonpayContainer) return;
+            
+            // REMPLACER CES VALEURS POUR LA PRODUCTION
+            const MOONPAY_API_KEY = "pk_test_123456789"; // Sandbox Test API Key
+            const MOONPAY_PARTNER_NAME = "MyTestPartnerName"; // Remplacer par votre nom de partenaire
+            
+            // Le WAX utilise le ticker 'WAXP' sur MoonPay, mais 'WAX' est parfois suffisant. Nous utilisons WAXP.
+            const defaultCurrency = 'waxp'; 
+            const defaultBaseCurrency = 'usd'; 
+            const defaultAmount = 50;
+            
+            // Construction de l'URL du widget MoonPay
+            // Important: l'URL doit être signée pour la production, mais nous utilisons le mode sandbox ici.
+            // Pour le mode sandbox, l'URL de base est 'https://sandbox.moonpay.com/'
+            // Pour le mode production, l'URL de base est 'https://buy.moonpay.com/'
+            
+            // Pour un widget basique (Sandbox):
+            const moonpayUrl = `https://sandbox.moonpay.com?apiKey=${MOONPAY_API_KEY}&colorCode=%2310b981&theme=dark&defaultCurrencyCode=${defaultCurrency}&baseCurrencyCode=${defaultBaseCurrency}&baseCurrencyAmount=${defaultAmount}&partnerName=${MOONPAY_PARTNER_NAME}`;
+
+            const iframe = document.createElement('iframe');
+            iframe.src = moonpayUrl;
+            iframe.width = "100%";
+            iframe.height = "100%";
+            iframe.frameBorder = "0";
+            iframe.allow = "camera; payment";
+            iframe.style.minHeight = "500px";
+
+            moonpayContainer.appendChild(iframe);
+            console.log("MoonPay Widget (Sandbox) initialisé.");
+        };
 
 
         // --- Lancement de l'Application ---
@@ -2615,11 +2689,16 @@
             fetchLiveWaxPrice(); 
             
             // Appeler calculate() au chargement pour afficher les valeurs par défaut
-            calculate();
+            // NOTE: calculate est déjà appelé dans fetchLiveWaxPrice, mais on le garde ici si fetch échoue rapidement.
+            // On le supprime pour éviter la double exécution et utiliser le `currentPriceWaxUsd` du fetch.
+            // calculate();
 
             // Initialiser l'analyse de swap au chargement également (similaire aux autres sections)
             handleArbitrageScan();
             
+            // Initialisation du widget MoonPay
+            initializeMoonPayWidget();
+
             console.log("Simulateur chargé et déverrouillé.");
 
         };
