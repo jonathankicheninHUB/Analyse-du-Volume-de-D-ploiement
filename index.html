@@ -622,7 +622,7 @@
             </p>
 
             <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
-                <table class="min-w-full divide-y divide-gray-700 text-sm relative">
+                <table class="min-w-full divide-y divide-gray-700 text-sm">
                     <thead class="sticky top-0 z-10">
                         <tr class="text-left bg-gray-800 text-gray-300 shadow-sm">
                             <th class="p-3">Bâtiment (Rareté/Niveau)</th>
@@ -954,6 +954,44 @@
                 </div>
 
             </div>
+            
+            <!-- NOUVELLE SOUS-SECTION 13.3: SUIVI DES PAIRES -->
+            <h4 class="text-lg font-semibold text-gray-300 mt-8 mb-3 border-t border-gray-700 pt-4">13.3 Suivi des Paires de Trading sur Alcor</h4>
+            
+            <p class="text-sm text-gray-400 mb-4">
+                Liste en temps réel de toutes les paires actives sur Alcor Exchange impliquant les jetons DOV.
+            </p>
+            
+            <!-- Token Selection -->
+            <div id="alcorTokenSelection" class="mb-4 flex flex-wrap gap-3">
+                <!-- Buttons will be injected here -->
+            </div>
+            
+            <!-- Live Data Table -->
+            <div id="alcorPairsContainer" class="bg-slate-800/50 backdrop-blur-sm rounded-lg overflow-hidden border border-purple-500/20 min-h-[150px] relative">
+                <div id="alcorPairsLoading" class="hidden absolute inset-0 flex items-center justify-center bg-slate-900/70 z-10">
+                    <svg class="animate-spin h-5 w-5 text-purple-400 mr-3" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" class="opacity-25"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span class="text-purple-200">Chargement des paires...</span>
+                </div>
+                <div id="alcorPairsTable" class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-purple-500/20 bg-slate-900/50">
+                                <th class="px-6 py-3 text-left text-purple-200 font-semibold">Paire</th>
+                                <th class="px-6 py-3 text-right text-purple-200 font-semibold">Prix</th>
+                                <th class="px-6 py-3 text-right text-purple-200 font-semibold">Liquidité (USD)</th>
+                                <th class="px-6 py-3 text-right text-purple-200 font-semibold">Vol. 24h (USD)</th>
+                                <th class="px-6 py-3 text-center text-purple-200 font-semibold">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alcorPairsBody">
+                            <!-- Rempli par JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="alcorPairsError" class="hidden p-4 text-center text-red-400"></div>
+                <div id="alcorPairsEmpty" class="hidden p-4 text-center text-gray-400">Aucune paire trouvée pour le jeton sélectionné.</div>
+            </div>
 
         </div>
 
@@ -1004,6 +1042,7 @@
     <script type="module">
         // --- API GEMINI ---
         const apiKey = ""; // API Key injectée par l'environnement
+        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
         
         // --- CONFIGURATION WAX & ALCOR ---
         const TARGET_COLLECTION_NAME = "dovdivisions";
@@ -1024,7 +1063,7 @@
         ];
         
         // Endpoint Alcor principal
-        const ALCOR_API_URL = "https://wax.alcor.exchange/api/markets";
+        const ALCOR_API_URL = "https://wax.alcor.exchange/api"; // Changé pour la V2
 
         // --- Constantes de prix et de ratio fixes (Basé sur les données utilisateur) ---
         const REFERENCE_DOVX = 0.00528552;
@@ -1045,6 +1084,7 @@
         const PUB_PERCENT = 0.10;
         
         const COST_TOKENS = ["DOV-H", "DOV-R", "DOV-S", "DOV-F"];
+        const DOV_TOKENS = ["DOVX", ...COST_TOKENS]; // Jetons DOV pour le suivi (Section 13.3)
 
         // --- DONNÉES SWAP ALCOR (LIVE API) ---
         // Noms des marchés Alcor pour les paires TARGET/WAX et DOVX/TARGET
@@ -1059,13 +1099,76 @@
             { token: "SHING", marketWax: "SHING-shingtoken_WAX-eosio.token", marketDovx: "DOVX-dov.token_SHING-shingtoken" } 
         ];
 
+        let scannedWalletData = []; // Stocke les données réelles/simulées du wallet (Section 10)
+        let allAlcorPairsCache = []; // Cache pour les données brutes de toutes les paires Alcor (Section 13.3)
+        let selectedAlcorToken = DOV_TOKENS[0]; // Jeton DOVX par défaut pour le suivi (Section 13.3)
+
+        // --- Fonctions de Formatage (Utility Functions) ---
+
+        /** Formate en WAX */
+        const formatWAX = (value, decimales = 6) => {
+            if (isNaN(value) || !isFinite(value)) return '--';
+            return value.toLocaleString('fr-FR', {
+                minimumFractionDigits: decimales,
+                maximumFractionDigits: decimales
+            }) + ' WAX';
+        };
+
+        /** Formate en USD ($) */
+        const formatUSD = (value, decimales = 4) => {
+            if (isNaN(value) || !isFinite(value)) return '--';
+            return value.toLocaleString('fr-FR', {
+                minimumFractionDigits: decimales,
+                maximumFractionDigits: decimales,
+                style: 'currency',
+                currency: 'USD',
+            });
+        };
+
+        /** Formate en unités (nombre avec séparateur) */
+        const formatUnits = (value) => {
+            if (isNaN(value) || !isFinite(value)) return '--';
+            const maxDigits = (value % 1 !== 0) ? 2 : 0;
+            return value.toLocaleString('fr-FR', { maximumFractionDigits: maxDigits });
+        };
+        
+        /** Formate en pourcentage */
+        const formatPercent = (value, decimales = 2) => {
+            if (isNaN(value) || !isFinite(value)) return '--';
+            return (value * 100).toLocaleString('fr-FR', {
+                minimumFractionDigits: decimales,
+                maximumFractionDigits: decimales
+            }) + ' %';
+        };
+        
+        /** Convertit une chaîne française (virgule) en float */
+        const parseFrenchFloat = (str) => {
+            if (!str) return NaN;
+            const standardStr = str.toString().replace(',', '.');
+            return parseFloat(standardStr);
+        };
+        
+        /** Convertit une chaîne de pourcentage française (virgule + %) en décimal (ex: 100,0000% -> 1) */
+        const parseFrenchPercent = (str) => {
+             if (!str) return 0;
+             // Supprime le % et remplace la virgule par un point
+             const cleanedStr = str.toString().replace('%', '').trim().replace(',', '.');
+             const value = parseFloat(cleanedStr);
+             if (isNaN(value)) return 0;
+             // Divise par 100 pour obtenir le facteur (ex: 100 -> 1.0)
+             return value / 100;
+        };
+        
+        
+        // --- Fonctions d'API Alcor (Maintenues ici) ---
+        
         /**
-         * Fonction utilitaire pour interroger l'API Alcor avec backoff exponentiel.
-         * @param {string} endpoint - Endpoint Alcor (e.g., /v1/markets/[market_name])
+         * Fonction utilitaire pour interroger l'API Alcor avec backoff exponentiel (Utilisée pour 13.1)
+         * @param {string} marketName - Nom du marché Alcor (e.g., TLM-alien.worlds_WAX-eosio.token)
          * @returns {Promise<Object|null>}
          */
         const fetchAlcorMarketPrice = async (marketName) => {
-            const url = `${ALCOR_API_URL}/${marketName}`;
+            const url = `${ALCOR_API_URL}/markets/${marketName}`;
             const maxRetries = 3;
             let delay = 500;
 
@@ -1090,7 +1193,7 @@
             return null;
         };
 
-        // --- NOUVELLE FONCTION DE RÉCUPÉRATION DE PRIX ALCOR EN TEMPS RÉEL ---
+        // Fonction d'arbitrage DOVX (Section 13.1)
         const fetchAlcorPrices = async () => {
             const results = [];
             const fetchPromises = ARBITRAGE_PAIRS_CONFIG.map(async (pair) => {
@@ -1122,6 +1225,7 @@
             await Promise.all(fetchPromises);
             return results;
         };
+
 
         // --- DONNÉES BATIMENTS (BUILDINGS) ---
         const TIER_STATS = [
@@ -1195,150 +1299,7 @@
             { name: "HQ", totalTuCost: 752000, dovxReward: 64884 }, 
             { name: "STAKING", totalTuCost: 650000, dovxReward: 50000 },
         ];
-
-        // --- Fonctions de Formatage (Utility Functions) ---
-
-        /** Formate en WAX */
-        const formatWAX = (value, decimales = 6) => {
-            if (isNaN(value) || !isFinite(value)) return '--';
-            return value.toLocaleString('fr-FR', {
-                minimumFractionDigits: decimales,
-                maximumFractionDigits: decimales
-            }) + ' WAX';
-        };
-
-        /** Formate en USD ($) */
-        const formatUSD = (value, decimales = 4) => {
-            if (isNaN(value) || !isFinite(value)) return '--';
-            return value.toLocaleString('fr-FR', {
-                minimumFractionDigits: decimales,
-                maximumFractionDigits: decimales,
-                style: 'currency',
-                currency: 'USD',
-            });
-        };
-
-        /** Formate en unités (nombre avec séparateur) */
-        const formatUnits = (value) => {
-            if (isNaN(value) || !isFinite(value)) return '--';
-            const maxDigits = (value % 1 !== 0) ? 2 : 0;
-            return value.toLocaleString('fr-FR', { maximumFractionDigits: maxDigits });
-        };
         
-        /** Formate en pourcentage */
-        const formatPercent = (value, decimales = 2) => {
-            if (isNaN(value) || !isFinite(value)) return '--';
-            return (value * 100).toLocaleString('fr-FR', {
-                minimumFractionDigits: decimales,
-                maximumFractionDigits: decimales
-            }) + ' %';
-        };
-        
-        /** Convertit une chaîne française (virgule) en float */
-        const parseFrenchFloat = (str) => {
-            if (!str) return NaN;
-            const standardStr = str.toString().replace(',', '.');
-            return parseFloat(standardStr);
-        };
-        
-        /** Convertit une chaîne de pourcentage française (virgule + %) en décimal (ex: 100,0000% -> 1) */
-        const parseFrenchPercent = (str) => {
-             if (!str) return 0;
-             // Supprime le % et remplace la virgule par un point
-             const cleanedStr = str.toString().replace('%', '').trim().replace(',', '.');
-             const value = parseFloat(cleanedStr);
-             if (isNaN(value)) return 0;
-             // Divise par 100 pour obtenir le facteur (ex: 100 -> 1.0)
-             return value / 100;
-        };
-        
-
-        // --- Références DOM (Liste abrégée pour la clarté) ---
-        const zoneSelector = document.getElementById('zoneSelector');
-        const priceWaxUsdInput = document.getElementById('priceWaxUsd');
-        const numberOfAccountsInput = document.getElementById('numberOfAccounts');
-        const divisionsPerAccountInput = document.getElementById('divisionsPerAccount');
-        const numberOfPacksInput = document.getElementById('numberOfPacks');
-        const divisionsPerPackInput = document.getElementById('divisionsPerPack');
-        const pricePerPackWaxInput = document.getElementById('pricePerPackWax'); 
-        const dovxPriceManualInput = document.getElementById('priceDovXManual');
-        const dovxPriceSlider = document.getElementById('dovxPriceSlider');
-        const priceCostTokenCalculated = document.getElementById('priceCostTokenCalculated');
-        const ratioDisplay = document.getElementById('ratioDisplay');
-        const btnFetchPrice = document.getElementById('btnFetchPrice'); 
-        const packDesignZoneSelector = document.getElementById('packDesignZoneSelector');
-        const packDesignPriceUsdInput = document.getElementById('packDesignPriceUsd');
-        const designPackNetUsdElement = document.getElementById('designPackNetUsd');
-        const designPackRoiDailyElement = document.getElementById('designPackRoiDaily');
-        const designPackRoiDaysElement = document.getElementById('designPackRoiDays');
-        const designPackCashBackUsdElement = document.getElementById('designPackCashBackUsd');
-        const designPackCashBackWaxElement = document.getElementById('designPackCashBackWax');
-        const designPackPriceWaxElement = document.getElementById('designPackPriceWax');
-        
-        const btnAiLore = document.getElementById('btnAiLore');
-        const aiLoreOutput = document.getElementById('aiLoreOutput');
-        const packNameInput = document.getElementById('packName');
-        const packCompositionInput = document.getElementById('packComposition');
-        const buildingsTableBody = document.getElementById('buildingsTableBody');
-        const buildingTypeFilter = document.getElementById('buildingTypeFilter');
-        const section9RatesDisplay = document.getElementById('section9RatesDisplay');
-        const userTotalTuDailyEl = document.getElementById('userTotalTuDaily');
-        const userTotalRevenueWaxEl = document.getElementById('userTotalRevenueWax');
-        const userTotalMarginWaxEl = document.getElementById('userTotalMarginWax'); 
-        const userTotalRevenueUsdMonthlyEl = document.getElementById('userTotalRevenueUsdMonthly'); 
-        const btnScanWallet = document.getElementById('btnScanWallet');
-        const walletAddressInput = document.getElementById('walletAddressInput');
-        const walletResultsContainer = document.getElementById('walletResultsContainer');
-        const walletAssetsBody = document.getElementById('walletAssetsBody');
-        const walletTotalBuildingsEl = document.getElementById('walletTotalBuildings');
-        const walletMonthlyWaxEl = document.getElementById('walletMonthlyWax');
-        const walletMonthlyUsdEl = document.getElementById('walletMonthlyUsd');
-        const walletScenarioSummary = document.getElementById('walletScenarioSummary');
-        const packBuildingSelect = document.getElementById('packBuildingSelect');
-        const packBuildingQtyInput = document.getElementById('packBuildingQty');
-        const packToolMultiplierInput = document.getElementById('packToolMultiplier');
-        const packBuildingPriceInput = document.getElementById('packBuildingPrice');
-        const packBuildingProdEl = document.getElementById('packBuildingProd');
-        const packBuildingProdBaseEl = document.getElementById('packBuildingProdBase');
-        const packBuildingOpExEl = document.getElementById('packBuildingOpEx');
-        const packBuildingMonthlyNetEl = document.getElementById('packBuildingMonthlyNet');
-        const packBuildingRoiEl = document.getElementById('packBuildingRoi');
-        const packBuildingRoiDaysEl = document.getElementById('packBuildingRoiDays');
-        
-        // CORRECTION DE RÉFÉRENCE: Utilisation des ID spécifiques de la section 11
-        const buildingPackCashBackUsdElement = document.getElementById('buildingPackCashBackUsd');
-        const buildingPackCashBackWaxElement = document.getElementById('buildingPackCashBackWax');
-        const buildingPackPriceWaxElement = document.getElementById('buildingPackPriceWax');
-
-        const btnScanMarket = document.getElementById('btnScanMarket');
-        const marketResultsContainer = document.getElementById('marketResultsContainer');
-        const marketDealsBody = document.getElementById('marketDealsBody');
-        const marketSniperSection = document.getElementById('marketSniperSection');
-        const marketRoiFilter = document.getElementById('marketRoiFilter');
-
-        const dovxCurrentWaxPriceDisplay = document.getElementById('dovxCurrentWaxPriceDisplay');
-        const swapAnalysisBody = document.getElementById('swapAnalysisBody');
-        // RÉFÉRENCE DOM AJOUTÉE
-        const btnArbitrageScan = document.getElementById('btnArbitrageScan');
-        
-        // NOUVELLES RÉFÉRENCES DOM POUR CALCULATEUR LP (Section 13.2)
-        const lpDovxWaxAmountInput = document.getElementById('lpDovxWaxAmount');
-        const lpDovxWaxRequiredEl = document.getElementById('lpDovxWaxRequired');
-        const lpDovxWaxPriceSpanEl = document.getElementById('lpDovxWaxPriceSpan');
-
-        const lpTuWaxAmountInput = document.getElementById('lpTuWaxAmount');
-        const lpTuWaxRequiredEl = document.getElementById('lpTuWaxRequired');
-        const lpTuWaxPriceSpanEl = document.getElementById('lpTuWaxPriceSpan');
-
-        const lpDovxTuAmountInput = document.getElementById('lpDovxTuAmount');
-        const lpDovxTuRequiredEl = document.getElementById('lpDovxTuRequired');
-        const lpDovxTuPriceSpanEl = document.getElementById('lpDovxTuPriceSpan');
-        const lpTuDovxPriceSpanEl = document.getElementById('lpTuDovxPriceSpan');
-        
-        
-        let scannedWalletData = []; // Stocke les données réelles/simulées du wallet (Section 10)
-
-
         // --- DONNÉES DIVISION FOURNIES PAR L'UTILISATEUR (REDACTED FOR BREVITY) ---
         const RAW_DIVISION_DATA = [
             "Common F1-26th-INFANTRY-REGIMENT 1,360,3000 100,0000% 22,0000% 100,0000% 72,0000% 1% combat",
@@ -1483,6 +1444,96 @@
         });
 
 
+        // --- Références DOM (Liste abrégée pour la clarté) ---
+        const zoneSelector = document.getElementById('zoneSelector');
+        const priceWaxUsdInput = document.getElementById('priceWaxUsd');
+        const numberOfAccountsInput = document.getElementById('numberOfAccounts');
+        const divisionsPerAccountInput = document.getElementById('divisionsPerAccount');
+        const numberOfPacksInput = document.getElementById('numberOfPacks');
+        const divisionsPerPackInput = document.getElementById('divisionsPerPack');
+        const pricePerPackWaxInput = document.getElementById('pricePerPackWax'); 
+        const dovxPriceManualInput = document.getElementById('priceDovXManual');
+        const dovxPriceSlider = document.getElementById('dovxPriceSlider');
+        const priceCostTokenCalculated = document.getElementById('priceCostTokenCalculated');
+        const ratioDisplay = document.getElementById('ratioDisplay');
+        const btnFetchPrice = document.getElementById('btnFetchPrice'); 
+        const packDesignZoneSelector = document.getElementById('packDesignZoneSelector');
+        const packDesignPriceUsdInput = document.getElementById('packDesignPriceUsd');
+        const designPackNetUsdElement = document.getElementById('designPackNetUsd');
+        const designPackRoiDailyElement = document.getElementById('designPackRoiDaily');
+        const designPackRoiDaysElement = document.getElementById('designPackRoiDays');
+        const designPackCashBackUsdElement = document.getElementById('designPackCashBackUsd');
+        const designPackCashBackWaxElement = document.getElementById('designPackCashBackWax');
+        const designPackPriceWaxElement = document.getElementById('designPackPriceWax');
+        
+        const btnAiLore = document.getElementById('btnAiLore');
+        const aiLoreOutput = document.getElementById('aiLoreOutput');
+        const packNameInput = document.getElementById('packName');
+        const packCompositionInput = document.getElementById('packComposition');
+        const buildingsTableBody = document.getElementById('buildingsTableBody');
+        const buildingTypeFilter = document.getElementById('buildingTypeFilter');
+        const section9RatesDisplay = document.getElementById('section9RatesDisplay');
+        const userTotalTuDailyEl = document.getElementById('userTotalTuDaily');
+        const userTotalRevenueWaxEl = document.getElementById('userTotalRevenueWax');
+        const userTotalMarginWaxEl = document.getElementById('userTotalMarginWax'); 
+        const userTotalRevenueUsdMonthlyEl = document.getElementById('userTotalRevenueUsdMonthly'); 
+        const btnScanWallet = document.getElementById('btnScanWallet');
+        const walletAddressInput = document.getElementById('walletAddressInput');
+        const walletResultsContainer = document.getElementById('walletResultsContainer');
+        const walletAssetsBody = document.getElementById('walletAssetsBody');
+        const walletTotalBuildingsEl = document.getElementById('walletTotalBuildings');
+        const walletMonthlyWaxEl = document.getElementById('walletMonthlyWax');
+        const walletMonthlyUsdEl = document.getElementById('walletMonthlyUsd');
+        const walletScenarioSummary = document.getElementById('walletScenarioSummary');
+        const packBuildingSelect = document.getElementById('packBuildingSelect');
+        const packBuildingQtyInput = document.getElementById('packBuildingQty');
+        const packToolMultiplierInput = document.getElementById('packToolMultiplier');
+        const packBuildingPriceInput = document.getElementById('packBuildingPrice');
+        const packBuildingProdEl = document.getElementById('packBuildingProd');
+        const packBuildingProdBaseEl = document.getElementById('packBuildingProdBase');
+        const packBuildingOpExEl = document.getElementById('packBuildingOpEx');
+        const packBuildingMonthlyNetEl = document.getElementById('packBuildingMonthlyNet');
+        const packBuildingRoiEl = document.getElementById('packBuildingRoi');
+        const packBuildingRoiDaysEl = document.getElementById('packBuildingRoiDays');
+        
+        // CORRECTION DE RÉFÉRENCE: Utilisation des ID spécifiques de la section 11
+        const buildingPackCashBackUsdElement = document.getElementById('buildingPackCashBackUsd');
+        const buildingPackCashBackWaxElement = document.getElementById('buildingPackCashBackWax');
+        const buildingPackPriceWaxElement = document.getElementById('buildingPackPriceWax');
+
+        const btnScanMarket = document.getElementById('btnScanMarket');
+        const marketResultsContainer = document.getElementById('marketResultsContainer');
+        const marketDealsBody = document.getElementById('marketDealsBody');
+        const marketSniperSection = document.getElementById('marketSniperSection');
+        const marketRoiFilter = document.getElementById('marketRoiFilter');
+
+        const dovxCurrentWaxPriceDisplay = document.getElementById('dovxCurrentWaxPriceDisplay');
+        const swapAnalysisBody = document.getElementById('swapAnalysisBody');
+        // RÉFÉRENCE DOM AJOUTÉE
+        const btnArbitrageScan = document.getElementById('btnArbitrageScan');
+        
+        // NOUVELLES RÉFÉRENCES DOM POUR CALCULATEUR LP (Section 13.2)
+        const lpDovxWaxAmountInput = document.getElementById('lpDovxWaxAmount');
+        const lpDovxWaxRequiredEl = document.getElementById('lpDovxWaxRequired');
+        const lpDovxWaxPriceSpanEl = document.getElementById('lpDovxWaxPriceSpan');
+
+        const lpTuWaxAmountInput = document.getElementById('lpTuWaxAmount');
+        const lpTuWaxRequiredEl = document.getElementById('lpTuWaxRequired');
+        const lpTuWaxPriceSpanEl = document.getElementById('lpTuWaxPriceSpan');
+
+        const lpDovxTuAmountInput = document.getElementById('lpDovxTuAmount');
+        const lpDovxTuRequiredEl = document.getElementById('lpDovxTuRequired');
+        const lpDovxTuPriceSpanEl = document.getElementById('lpDovxTuPriceSpan');
+        const lpTuDovxPriceSpanEl = document.getElementById('lpTuDovxPriceSpan');
+
+        // NOUVELLES RÉFÉRENCES DOM POUR SUIVI PAIRES (Section 13.3)
+        const alcorTokenSelection = document.getElementById('alcorTokenSelection');
+        const alcorPairsBody = document.getElementById('alcorPairsBody');
+        const alcorPairsLoading = document.getElementById('alcorPairsLoading');
+        const alcorPairsError = document.getElementById('alcorPairsError');
+        const alcorPairsEmpty = document.getElementById('alcorPairsEmpty');
+        
+        
         // --- Fonctions d'Initialisation ---
 
         const initializeSelectors = () => {
@@ -1503,7 +1554,57 @@
 
              if (zoneSelector) zoneSelector.value = 0;
              if (packDesignZoneSelector) packDesignZoneSelector.value = 0;
+             
+             // Initialisation des boutons de sélection de jetons (Section 13.3)
+             initializeAlcorPairsSelector();
         };
+        
+        // Initialise la sélection de jetons pour le suivi (Section 13.3)
+        const initializeAlcorPairsSelector = () => {
+            if (!alcorTokenSelection) return;
+            alcorTokenSelection.innerHTML = '';
+
+            DOV_TOKENS.forEach(token => {
+                const button = document.createElement('button');
+                button.textContent = token;
+                button.classList.add('px-4', 'py-2', 'rounded-lg', 'font-semibold', 'transition-all', 'text-sm');
+                button.setAttribute('data-token', token);
+                
+                // Mettre à jour l'état visuel initial
+                if (token === selectedAlcorToken) {
+                    button.classList.add('bg-purple-500', 'text-white', 'shadow-lg', 'shadow-purple-500/50');
+                } else {
+                    button.classList.add('bg-slate-700', 'text-purple-200', 'hover:bg-slate-600');
+                }
+
+                button.addEventListener('click', () => {
+                    handleTokenChange(token);
+                });
+
+                alcorTokenSelection.appendChild(button);
+            });
+        };
+        
+        // Change le jeton sélectionné et filtre les paires (Section 13.3)
+        const handleTokenChange = (token) => {
+            selectedAlcorToken = token;
+            
+            // Mise à jour visuelle des boutons
+            const buttons = alcorTokenSelection.querySelectorAll('button');
+            buttons.forEach(button => {
+                const buttonToken = button.getAttribute('data-token');
+                button.classList.remove('bg-purple-500', 'text-white', 'shadow-lg', 'shadow-purple-500/50');
+                button.classList.add('bg-slate-700', 'text-purple-200', 'hover:bg-slate-600');
+                if (buttonToken === selectedAlcorToken) {
+                    button.classList.remove('bg-slate-700', 'text-purple-200', 'hover:bg-slate-600');
+                    button.classList.add('bg-purple-500', 'text-white', 'shadow-lg', 'shadow-purple-500/50');
+                }
+            });
+            
+            // Filtrer le cache des paires
+            filterAlcorPairs(allAlcorPairsCache, selectedAlcorToken);
+        };
+
 
          // Met à jour la quantité d'un bâtiment et déclenche le recalcul des totaux utilisateur.
         window.updateBuildingQuantity = (input) => {
@@ -1576,12 +1677,6 @@
 
 
         // --- Fonctions de Mise à Jour des Sections ---
-
-        // Met à jour la visibilité et l'état des champs de prix selon le mode USD/WAX
-        // Cette fonction est désormais obsolète, mais son corps est conservé vide pour éviter des erreurs si elle est appelée par erreur.
-        const updatePricingModeUI = (mode) => {
-            // Logique retirée : WAX est le seul mode d'entrée désormais pour le prix du pack
-        };
 
         // Met à jour les calculs du Pack Design (Section 8)
         const calculatePackDesign = (tokenPrices) => {
@@ -1834,7 +1929,7 @@
             if(buildingPackPriceWaxElement) buildingPackPriceWaxElement.textContent = formatWAX(pricePackWax, 0);
         };
 
-        // Calcule l'analyse de swap (Section 13)
+        // Calcule l'analyse de swap (Section 13.1)
         const calculateSwapAnalysis = async (tokenPrices) => {
             const { newPriceDovX } = tokenPrices;
             
@@ -1863,10 +1958,7 @@
             let hasValidData = false;
 
             liveSwapData.forEach(pair => {
-                let livePriceWaxText = '--';
-                let impliedWaxValueText = '--';
                 let arbitrageGainText = '--';
-                let actionText = 'Données manquantes';
                 let colorClass = 'text-gray-500';
 
                 if (pair.isMissingData) {
@@ -1885,647 +1977,408 @@
                 }
 
                 hasValidData = true;
-                const livePriceWax = pair.priceTargetWax;
                 const impliedWaxValue = pair.impliedWaxValue;
-                const arbitrageGainRatio = (impliedWaxValue / newPriceDovX) - 1;
                 
-                livePriceWaxText = formatWAX(livePriceWax, 6);
-                impliedWaxValueText = formatWAX(impliedWaxValue, 8);
-                arbitrageGainText = formatPercent(arbitrageGainRatio, 2);
+                // Calcul de l'opportunité d'arbitrage
+                const diff = impliedWaxValue - newPriceDovX;
+                const gainPercent = (diff / newPriceDovX);
 
-                if (arbitrageGainRatio > 0.005) { // Seuil de 0.5% pour considérer l'arbitrage
-                    colorClass = 'text-green-400 font-extrabold';
-                    actionText = 'OPPORTUNITÉ D\'ARBITRAGE';
-                } else if (arbitrageGainRatio < -0.005) {
+                if (diff > 0) {
+                    colorClass = 'text-green-400';
+                    arbitrageGainText = formatPercent(gainPercent, 4);
+                } else if (diff < 0) {
                     colorClass = 'text-red-400';
-                    actionText = 'RENDEMENT INFÉRIEUR (Éviter)';
+                    arbitrageGainText = formatPercent(gainPercent, 4); // Le pourcentage sera négatif
                 } else {
-                    colorClass = 'text-gray-400';
-                    actionText = 'Taux de marché (Indifférent)';
+                    colorClass = 'text-yellow-400';
+                    arbitrageGainText = '0,00 %';
                 }
 
                 html += `
                     <tr class="hover:bg-gray-800/40">
-                        <td class="p-3 font-semibold text-purple-200">DOVX / ${pair.token}</td>
-                        <td class="p-3 text-right">${livePriceWaxText}</td>
-                        <td class="p-3 text-right text-purple-300">${impliedWaxValueText}</td>
-                        <td class="p-3 text-right ${colorClass}">
-                            ${arbitrageGainText} 
-                            <span class="text-xs text-gray-500 block">${actionText}</span>
+                        <td class="p-3 font-semibold text-purple-200">DOVX / ${pair.token} / WAX</td>
+                        <td class="p-3 text-right text-gray-300">${formatWAX(pair.priceTargetWax, 8)}</td>
+                        <td class="p-3 text-right text-purple-300">${formatWAX(impliedWaxValue, 8)}</td>
+                        <td class="p-3 text-right font-bold ${colorClass}">
+                            ${arbitrageGainText}
+                            <span class="text-xs text-gray-500 block">Diff. Abs: ${formatWAX(diff, 8)}</span>
                         </td>
                     </tr>
                 `;
             });
-
-            if (!hasValidData) {
-                html = `<tr><td colspan="4" class="p-4 text-center text-red-400">❌ Aucune donnée de marché Alcor n'a pu être récupérée pour les paires DOVX/[Target]/WAX.</td></tr>`;
+            
+            // Mise à jour de l'affichage final
+            if(swapAnalysisBody) {
+                swapAnalysisBody.innerHTML = html;
+                if (!hasValidData) {
+                     swapAnalysisBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-red-400">Aucune donnée de marché valide n'a pu être récupérée pour l'arbitrage.</td></tr>`;
+                }
             }
-            
-            if(swapAnalysisBody) swapAnalysisBody.innerHTML = html;
-            
-            // --- Fin de chargement ---
+
+            // Rétablir l'état du bouton
             if(btnArbitrageScan) {
                 btnArbitrageScan.textContent = "🔄 Analyser les Swaps (Arbitrage)";
                 btnArbitrageScan.disabled = false;
                 btnArbitrageScan.classList.remove('ai-loading');
             }
         };
-
-        // Calcule le Dépôt de Liquidité (LP)
-        const calculateLPDeposit = (tokenPrices) => {
-            const { newPriceDovX, newPriceCostToken } = tokenPrices;
-            
-            // Prix Unitaires:
-            const priceDovxInWax = newPriceDovX; // Prix DOVX en WAX (Ex: 0.00528 WAX)
-            const priceTuInWax = newPriceCostToken; // Prix TU en WAX (Ex: 0.00045 WAX)
-            
-            // Ratio DOVX/TU
-            let priceDovxInTu = 0;
-            let priceTuInDovx = 0;
-            if (priceTuInWax > 0) {
-                 priceDovxInTu = priceDovxInWax / priceTuInWax; // Prix d'un DOVX en TU
-                 priceTuInDovx = 1 / priceDovxInTu; // Prix d'un TU en DOVX
-            }
-            
-            // 1. Pool A: DOVX / WAX
-            const waxAmountA = parseFloat(lpDovxWaxAmountInput.value) || 0;
-            let dovxRequiredA = 0;
-            if (priceDovxInWax > 0) {
-                 // Quantité DOVX = Quantité WAX / Prix DOVX en WAX (P_D/W)
-                dovxRequiredA = waxAmountA / priceDovxInWax;
-            }
-
-            if(lpDovxWaxRequiredEl) lpDovxWaxRequiredEl.textContent = formatUnits(dovxRequiredA) + ' DOVX';
-            if(lpDovxWaxPriceSpanEl) lpDovxWaxPriceSpanEl.textContent = formatUnits(1 / priceDovxInWax) + ' DOVX';
-            
-            // 2. Pool B: TU / WAX
-            const waxAmountB = parseFloat(lpTuWaxAmountInput.value) || 0;
-            let tuRequiredB = 0;
-            if (priceTuInWax > 0) {
-                // Quantité TU = Quantité WAX / Prix TU en WAX (P_T/W)
-                tuRequiredB = waxAmountB / priceTuInWax;
-            }
-
-            if(lpTuWaxRequiredEl) lpTuWaxRequiredEl.textContent = formatUnits(tuRequiredB) + ' TU';
-            if(lpTuWaxPriceSpanEl) lpTuWaxPriceSpanEl.textContent = formatUnits(1 / priceTuInWax) + ' TU';
-
-            // 3. Pool C: DOVX / TU
-            const dovxAmountC = parseFloat(lpDovxTuAmountInput.value) || 0;
-            let tuRequiredC = dovxAmountC * priceDovxInTu; // Quantité TU = Quantité DOVX * Prix DOVX en TU
-
-            if(lpDovxTuRequiredEl) lpDovxTuRequiredEl.textContent = formatUnits(tuRequiredC) + ' TU';
-            if(lpDovxTuPriceSpanEl) lpDovxTuPriceSpanEl.textContent = formatUnits(priceDovxInTu);
-            if(lpTuDovxPriceSpanEl) lpTuDovxPriceSpanEl.textContent = formatUnits(priceTuInDovx);
-
-        };
-
-        // --- Fonctions d'Appel API Réelles ---
-
-        // Récupération prix live WAX/USD (CoinGecko)
-        const fetchLiveWaxPrice = async () => {
-            const priceInput = priceWaxUsdInput;
-            const btn = btnFetchPrice;
-            if (btn) btn.textContent = "⌛...";
-            if (btn) btn.disabled = true;
-
-            try {
-                // Utilisation d'un backoff exponentiel pour l'appel API
-                let response;
-                let data;
-                const maxRetries = 3;
-                let delay = 1000;
-
-                for (let i = 0; i < maxRetries; i++) {
-                    response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=wax&vs_currencies=usd');
-                    if (response.ok) {
-                        data = await response.json();
-                        break;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2; 
-                }
-
-                if (!response.ok || !data) throw new Error("Erreur API CoinGecko après retries");
-                
-                const price = data.wax.usd;
-
-                if (price) {
-                    // Mettre à jour l'input avec la valeur formatée en français
-                    if (priceInput) priceInput.value = price.toLocaleString('fr-FR', { minimumFractionDigits: 4, maximumFractionDigits: 6 });
-                    currentPriceWaxUsd = price; // Mettre à jour la variable globale avec la valeur float réelle
-                    calculate(); // Recalculer toutes les dépendances
-                    
-                    if (btn) btn.textContent = "✅";
-                    setTimeout(() => {
-                        if (btn) btn.textContent = "🔄 Live";
-                        if (btn) btn.disabled = false;
-                    }, 2000);
-                }
-
-            } catch (e) {
-                console.warn("Erreur fetch prix WAX/USD:", e);
-                if (btn) btn.textContent = "❌ Err";
-                // Assurez-vous que le calcul est exécuté même en cas d'échec pour utiliser la valeur par défaut
-                calculate();
-                setTimeout(() => {
-                    if (btn) btn.textContent = "🔄 Live";
-                    if (btn) btn.disabled = false;
-                }, 3000);
-            }
-        };
         
-        // Scan Wallet AtomicAssets (Section 10)
-        const fetchWalletAssets = async (walletName) => {
-            const endpoints = ATOMIC_ENDPOINTS;
-            let queryParams = `?owner=${walletName}&page=1&limit=1000&collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}`;
-
-            for (let i = 0; i < endpoints.length; i++) {
-                const endpoint = endpoints[i];
-                const url = `${endpoint}${queryParams}`;
-
-                try {
-                    const response = await fetch(url, { method: 'GET', mode: 'cors' });
-                    if (!response.ok) continue;
-
-                    const data = await response.json();
-                    if (!data.success) continue;
-
-                    let inventory = {}; 
-                    data.data.forEach(asset => {
-                        let name = asset.name || (asset.template?.immutable_data?.name) || (asset.data?.name);
-                        if (name) {
-                            name = name.trim();
-                            inventory[name] = (inventory[name] || 0) + 1;
-                        }
-                    });
-
-                    // Conversion en format [{name, qty}]
-                    return Object.keys(inventory).map(key => ({
-                        name: key,
-                        qty: inventory[key]
-                    }));
-
-                } catch (error) {
-                    console.warn(`Échec de connexion au nœud ${endpoint}:`, error);
-                }
-            }
-            return []; // Échec de tous les nœuds
-        };
-
-        const calculateWalletEarnings = (tokenPrices) => {
-            if (!scannedWalletData || scannedWalletData.length === 0) {
-                 if(walletResultsContainer) walletResultsContainer.classList.add('hidden');
-                 if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-yellow-400 font-bold">⚠️ Aucun bâtiment compatible trouvé dans ce portefeuille.</span>`;
-                 return;
-            }
-
-            const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
-            
-            // Mise à jour du résumé scénario
-            if(walletScenarioSummary) {
-                // Utilisation de currentPriceWaxUsd directement de la variable globale, qui est mise à jour par fetchLiveWaxPrice
-                const displayWaxUsd = currentPriceWaxUsd; 
-
-                walletScenarioSummary.innerHTML = `
-                    <div class="flex flex-col sm:flex-row justify-between items-center w-full">
-                        <span class="font-bold text-cyan-300 mb-2 sm:mb-0">ℹ️ Scénario de Marché Appliqué</span>
-                        <div class="flex space-x-6 text-gray-300">
-                            <span>WAX/USD: <span class="text-white font-mono font-bold">${formatUSD(displayWaxUsd, 4)}</span></span>
-                            <span>DOVX/WAX: <span class="text-white font-mono font-bold">${formatWAX(newPriceDovX, 6)}</span></span>
-                        </div>
-                    </div>
-                `;
-            }
-
-            let totalBuildings = 0;
-            let totalMonthlyWax = 0;
-            let totalMonthlyUsd = 0;
-            let rowsHtml = '';
-            
-            scannedWalletData.forEach(asset => {
-                const buildingStats = BUILDING_DATA.find(b => b.technicalName === asset.name);
-
-                if (buildingStats) {
-                    const hourlyCostDovx = buildingStats.dovxCost;
-                    const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
-                    const dailyProdTu = buildingStats.prodPerHour * 24;
-                    const dailyRevenueWax = dailyProdTu * newPriceCostToken;
-                    const monthlyMarginWax = (dailyRevenueWax - dailyCostWax) * 30;
-                    const monthlyMarginUsd = monthlyMarginWax * priceWaxUsd;
-                    
-                    const assetTotalMonthlyUsd = monthlyMarginUsd * asset.qty;
-                    const assetTotalMonthlyWax = monthlyMarginWax * asset.qty;
-
-                    totalBuildings += asset.qty;
-                    totalMonthlyWax += assetTotalMonthlyWax;
-                    totalMonthlyUsd += assetTotalMonthlyUsd;
-
-                    rowsHtml += `
-                        <tr class="hover:bg-gray-800/30 transition-colors">
-                            <td class="p-3">
-                                <span class="font-medium ${buildingStats.cssClass}">${buildingStats.name}</span>
-                                <span class="text-xs text-gray-500 block">ID: ${asset.name}</span>
-                            </td>
-                            <td class="p-3 text-center font-bold text-gray-300">${asset.qty}</td>
-                            <td class="p-3 text-right text-green-400 font-bold text-lg">${formatUSD(assetTotalMonthlyUsd, 2)}</td>
-                        </tr>
-                    `;
-                }
-            });
-
-            if (walletTotalBuildingsEl) walletTotalBuildingsEl.textContent = totalBuildings;
-            if (walletMonthlyWaxEl) walletMonthlyWaxEl.textContent = formatWAX(totalMonthlyWax, 2);
-            if (walletMonthlyUsdEl) walletMonthlyUsdEl.textContent = formatUSD(totalMonthlyUsd, 2);
-            if (walletAssetsBody) walletAssetsBody.innerHTML = rowsHtml;
-            if (walletResultsContainer) walletResultsContainer.classList.remove('hidden');
-        };
-
-        if (btnScanWallet) {
-             btnScanWallet.addEventListener('click', async () => {
-                const wallet = walletAddressInput.value.trim();
-                // Utilisation d'un message non-bloquant
-                if (!wallet) {
-                    if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-red-400 font-bold">⚠️ Veuillez entrer une adresse WAX valide (ex: user.wam).</span>`;
-                    return;
-                }
-
-                if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-yellow-400 font-bold">🔍 Scan AtomicAssets pour ${wallet} en cours...</span>`;
-                if (btnScanWallet) btnScanWallet.textContent = "Scan en cours...";
-                if (btnScanWallet) btnScanWallet.disabled = true;
-                
-                scannedWalletData = await fetchWalletAssets(wallet);
-                
-                const tokenPrices = { 
-                    newPriceDovX: currentPriceDovX, 
-                    newPriceCostToken: currentPriceCostToken, 
-                    priceWaxUsd: currentPriceWaxUsd 
-                };
-
-                if(scannedWalletData.length > 0) {
-                    calculateWalletEarnings(tokenPrices);
-                    if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-green-400 font-bold">✅ Audit terminé. Bâtiments trouvés : ${scannedWalletData.length}.</span> Les calculs sont basés sur les taux que vous avez définis.`;
-                } else {
-                    if(walletScenarioSummary) walletScenarioSummary.innerHTML = `<span class="text-red-400 font-bold">❌ Aucun bâtiment 'dovdivisions::warbuildings' trouvé pour ${wallet}.</span>`;
-                    if(walletResultsContainer) walletResultsContainer.classList.add('hidden');
-                }
-
-                if (btnScanWallet) btnScanWallet.textContent = "Scanner le Portefeuille";
-                if (btnScanWallet) btnScanWallet.disabled = false;
-            });
-        }
-        
-        // Sniper de Marché AtomicMarket (Section 12)
-        const fetchMarketDeals = async () => {
-             const endpoints = ATOMIC_MARKET_ENDPOINTS;
-             let queryParams = `?collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}&state=1&limit=100&order=asc&sort=price`;
+        // Calcule les quantités de jetons pour le LP (Section 13.2)
+        const calculateLpResults = (tokenPrices) => {
+             const { newPriceDovX, newPriceCostToken } = tokenPrices;
              
-             for (let i = 0; i < endpoints.length; i++) {
-                const endpoint = endpoints[i];
-                const url = `${endpoint}${queryParams}`;
-
-                try {
-                    const response = await fetch(url, { method: 'GET', mode: 'cors' });
-                    if (!response.ok) continue;
-
-                    const data = await response.json();
-                    if (!data.success) continue;
-
-                    return data.data; // Sales array
-
-                } catch (error) {
-                    console.warn(`Erreur Market endpoint ${i}:`, error);
-                }
+             // --- Pool A: DOVX / WAX ---
+             const waxAmountA = parseFloat(lpDovxWaxAmountInput.value) || 0;
+             let dovxRequiredA = 0;
+             if (newPriceDovX > 0) {
+                 dovxRequiredA = waxAmountA / newPriceDovX;
              }
-             return [];
-        };
+             const waxToDovxA = (newPriceDovX > 0) ? (1 / newPriceDovX) : Infinity;
 
-        const calculateMarketDeals = async () => {
-            if(marketSniperSection) marketSniperSection.classList.add('scanning');
-            if(btnScanMarket) btnScanMarket.textContent = "Scan en cours...";
-            if(btnScanMarket) btnScanMarket.disabled = true;
-            if(marketDealsBody) marketDealsBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-yellow-400">Recherche des offres de marché AtomicHub en cours...</td></tr>`;
+             if (lpDovxWaxRequiredEl) lpDovxWaxRequiredEl.textContent = formatUnits(dovxRequiredA) + ' DOVX';
+             if (lpDovxWaxPriceSpanEl) lpDovxWaxPriceSpanEl.textContent = formatUnits(waxToDovxA);
 
-            const sales = await fetchMarketDeals();
-            
-            const newPriceDovX = currentPriceDovX;
-            const newPriceCostToken = currentPriceCostToken;
-            const filterMaxRoi = parseInt(marketRoiFilter.value) || 3650;
 
-            let deals = [];
-            
-            if (newPriceDovX <= 0 || newPriceCostToken <= 0) {
-                if(marketDealsBody) marketDealsBody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-400">Impossible de calculer le ROI. Prix des jetons (DOVX/TU) nuls ou négatifs.</td></tr>`;
-            } else {
-                sales.forEach(sale => {
-                    const asset = sale.assets[0];
-                    let assetName = asset.name || (asset.template?.immutable_data?.name) || (asset.data?.name);
-                    
-                    if (assetName) {
-                        const buildingStats = BUILDING_DATA.find(b => b.technicalName === assetName);
-                        
-                        if (buildingStats) {
-                            const priceWax = parseInt(sale.price.amount) / Math.pow(10, sale.price.token_precision);
-                            
-                            const hourlyCostDovx = buildingStats.dovxCost;
-                            const dailyCostWax = hourlyCostDovx * 24 * newPriceDovX;
-                            const dailyProdTu = buildingStats.prodPerHour * 24;
-                            const dailyRevenueWax = dailyProdTu * newPriceCostToken;
-                            const dailyNetWax = dailyRevenueWax - dailyCostWax;
-                            
-                            let roiDays = Infinity;
-                            if (dailyNetWax > 0) {
-                                roiDays = priceWax / dailyNetWax;
-                            }
+             // --- Pool B: TU / WAX ---
+             const waxAmountB = parseFloat(lpTuWaxAmountInput.value) || 0;
+             let tuRequiredB = 0;
+             if (newPriceCostToken > 0) {
+                 tuRequiredB = waxAmountB / newPriceCostToken;
+             }
+             const waxToTuB = (newPriceCostToken > 0) ? (1 / newPriceCostToken) : Infinity;
 
-                            if (roiDays <= filterMaxRoi) {
-                                deals.push({
-                                    name: buildingStats.name,
-                                    price: priceWax,
-                                    dailyNet: dailyNetWax,
-                                    roi: roiDays,
-                                    saleId: sale.sale_id,
-                                    rarityClass: buildingStats.cssClass
-                                });
-                            }
-                        }
-                    }
-                });
-                
-                deals.sort((a, b) => a.roi - b.roi);
+             if (lpTuWaxRequiredEl) lpTuWaxRequiredEl.textContent = formatUnits(tuRequiredB) + ' TU';
+             if (lpTuWaxPriceSpanEl) lpTuWaxPriceSpanEl.textContent = formatUnits(waxToTuB);
 
-                let html = '';
-                deals.forEach(deal => {
-                    const roiColor = deal.roi < 100 ? 'text-green-400 font-extrabold' : (deal.roi < 200 ? 'text-yellow-400' : 'text-gray-400');
-                    
-                    html += `
-                        <tr class="hover:bg-gray-800/40 border-b border-gray-800/50">
-                            <td class="p-3 font-medium ${deal.rarityClass}">${deal.name}</td>
-                            <td class="p-3 text-right font-bold text-white">${formatWAX(deal.price, 2)}</td>
-                            <td class="p-3 text-right text-green-300">+${formatWAX(deal.dailyNet, 4)}</td>
-                            <td class="p-3 text-center ${roiColor}">${formatUnits(deal.roi)} Jours</td>
-                            <td class="p-3 text-center">
-                                <a href="https://wax.atomichub.io/market/sale/${deal.saleId}" target="_blank" class="inline-block bg-yellow-600 hover:bg-yellow-500 text-black text-xs font-bold py-1 px-3 rounded transition-colors">
-                                    ACHETER ↗
-                                </a>
-                            </td>
-                        </tr>
-                    `;
-                });
-                
-                if(marketDealsBody) marketDealsBody.innerHTML = html.length > 0 ? html : `<tr><td colspan="5" class="p-6 text-center text-gray-500">Aucune offre trouvée sous le seuil de ${filterMaxRoi} jours.</td></tr>`;
-            }
 
-            if(marketResultsContainer) marketResultsContainer.classList.remove('hidden');
+             // --- Pool C: DOVX / TU ---
+             const dovxAmountC = parseFloat(lpDovxTuAmountInput.value) || 0;
+             let tuRequiredC = 0;
+             let dovxToTuPrice = 0;
+             let tuToDovxPrice = 0;
 
-            if(btnScanMarket) btnScanMarket.textContent = "🔍 Scanner les Offres (ROI)";
-            if(btnScanMarket) btnScanMarket.disabled = false;
-            if(marketSniperSection) marketSniperSection.classList.remove('scanning');
-        };
+             if (newPriceDovX > 0 && newPriceCostToken > 0) {
+                 dovxToTuPrice = newPriceDovX / newPriceCostToken;
+                 tuToDovxPrice = 1 / dovxToTuPrice;
+                 tuRequiredC = dovxAmountC * dovxToTuPrice;
+             }
 
-        if (btnScanMarket) btnScanMarket.addEventListener('click', calculateMarketDeals);
-
-        // NOUVELLE FONCTION: Gère le clic sur le bouton d'arbitrage (Section 13)
-        const handleArbitrageScan = () => {
-             const tokenPrices = { 
-                newPriceDovX: currentPriceDovX, 
-                newPriceCostToken: currentPriceCostToken, 
-                priceWaxUsd: currentPriceWaxUsd 
-            };
-            calculateSwapAnalysis(tokenPrices);
-            calculateLPDeposit(tokenPrices); // Update LP calculator as well
+             if (lpDovxTuRequiredEl) lpDovxTuRequiredEl.textContent = formatUnits(tuRequiredC) + ' TU';
+             if (lpDovxTuPriceSpanEl) lpDovxTuPriceSpanEl.textContent = formatUnits(dovxToTuPrice);
+             if (lpTuDovxPriceSpanEl) lpTuDovxPriceSpanEl.textContent = formatUnits(tuToDovxPrice);
         };
         
-        // --- Fonction de Calcul Principale (Volume + Master) ---
-        const calculate = () => {
+        // --- NOUVEAU: Fonctions de suivi des Paires Alcor (Section 13.3) ---
+        
+        // Fonction pour formater M, K, etc. (pris du code React de l'utilisateur)
+        const formatNumber = (num, decimals = 2) => {
+             if (isNaN(num) || !isFinite(num)) return '0';
+             if (num >= 1e6) return (num / 1e6).toFixed(decimals) + 'M';
+             if (num >= 1e3) return (num / 1e3).toFixed(decimals) + 'K';
+             return num.toFixed(decimals);
+         };
 
-            const selectedIndex = parseInt(zoneSelector.value);
-            const selectedZone = ZONE_DATA[selectedIndex];
-
-            // 1. Lecture des prix MANUELS & MAJ des taux
-            // Utilisez parseFrenchFloat pour lire la valeur du champ WAX/USD, car elle peut avoir une virgule
-            currentPriceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value) || 0;
-            const priceWaxUsd = currentPriceWaxUsd;
+        // 1. Récupère toutes les paires depuis l'API Alcor V2
+        const fetchAllAlcorPairs = async () => {
+            if (alcorPairsLoading) alcorPairsLoading.classList.remove('hidden');
+            if (alcorPairsError) alcorPairsError.classList.add('hidden');
             
-            // Lecture DOVX et Calcul TU par Ratio
-            currentPriceDovX = parseFrenchFloat(dovxPriceManualInput.value) || 0;
-            const newPriceDovX = currentPriceDovX;
-            currentPriceCostToken = (newPriceDovX > 0) ? newPriceDovX / DOVX_TO_TU_RATIO : 0;
-            const newPriceCostToken = currentPriceCostToken;
+            const url = `${ALCOR_API_URL}/v2/markets?limit=1000&swap_enabled=true`;
             
-            // Mise à jour de l'input TU calculé (pour affichage)
-            if(priceCostTokenCalculated) priceCostTokenCalculated.value = newPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-            if(ratioDisplay) {
-                 const roundedRatio = DOVX_TO_TU_RATIO.toFixed(7);
-                 ratioDisplay.textContent = `Ratio appliqué: DOVX / ${roundedRatio} (basé sur ${REFERENCE_DOVX} / ${REFERENCE_TU})`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la récupération des données Alcor V2.');
+                }
+                
+                const data = await response.json();
+                allAlcorPairsCache = data.rows || [];
+                
+                // Filtrer et afficher le jeton par défaut (DOVX)
+                filterAlcorPairs(allAlcorPairsCache, selectedAlcorToken);
+                
+            } catch (error) {
+                console.error("Erreur Alcor Pairs Finder:", error);
+                if (alcorPairsError) {
+                    alcorPairsError.textContent = 'Impossible de récupérer les paires Alcor. Vérifiez l\'API.';
+                    alcorPairsError.classList.remove('hidden');
+                }
+                filterAlcorPairs([], selectedAlcorToken); // Afficher vide en cas d'erreur
+            } finally {
+                if (alcorPairsLoading) alcorPairsLoading.classList.add('hidden');
             }
+        };
 
-            const numberOfAccounts = Math.max(1, parseInt(numberOfAccountsInput.value) || 1); 
-            const divisionsPerAccount = Math.max(1, parseInt(divisionsPerAccountInput.value) || 1);
-            
-            const numberOfPacks = Math.max(0, parseInt(numberOfPacksInput.value) || 0); 
-            const divisionsPerPack = Math.max(0, parseInt(divisionsPerPackInput.value) || 0); 
-            const totalDivisionsPurchased = numberOfPacks * divisionsPerPack;
-            if(document.getElementById('resultTotalDivisionsPurchased')) document.getElementById('resultTotalDivisionsPurchased').textContent = formatUnits(totalDivisionsPurchased);
-            
-            // --- LOGIQUE DE PRIX PACK VOLUME (WAX seul) ---
-            let pricePerPackUsdInputVal = 0;
-            const pricePerPackWax = parseFrenchFloat(pricePerPackWaxInput.value) || 0;
-            
-            // Calculer le prix USD à partir du WAX (maintenant l'input principal)
-            if (priceWaxUsd > 0) {
-                pricePerPackUsdInputVal = pricePerPackWax * priceWaxUsd;
-            } 
-            // --- FIN LOGIQUE DE PRIX PACK VOLUME ---
-            
-            const totalInvestmentWAX = numberOfPacks * pricePerPackWax;
-            const totalInvestmentUSD = numberOfPacks * pricePerPackUsdInputVal;
+        // 2. Filtre et affiche les paires pour un jeton donné
+        const filterAlcorPairs = (allData, token) => {
+            if (alcorPairsBody) alcorPairsBody.innerHTML = '';
+            if (alcorPairsEmpty) alcorPairsEmpty.classList.add('hidden');
 
-            const tokenPrices = { newPriceDovX, newPriceCostToken, priceWaxUsd };
-
-            // --- Appel aux fonctions dépendantes des prix des tokens ---
-            calculatePackDesign(tokenPrices);
-            updateBuildingTable(tokenPrices); 
-            calculateLPDeposit(tokenPrices); // Call LP calculator on main calculation
-
-            // --- Calculs du Volume (Sections 2-7) ---
-
-            const totalMultiplier = numberOfAccounts * divisionsPerAccount;
+            const filtered = allData.filter(pair => {
+                const base = pair.base?.symbol?.name || '';
+                const quote = pair.quote?.symbol?.name || '';
+                return base === token || quote === token;
+            });
             
-            if (!selectedZone || priceWaxUsd <= 0 || newPriceDovX <= 0 || newPriceCostToken <= 0) {
-                 // Sortie rapide si données invalides
-                document.querySelectorAll('.result-value').forEach(el => { if (el) el.textContent = '--'; });
+            // Trier par liquidité (descendant)
+            filtered.sort((a, b) => (b.liquidity || 0) - (a.liquidity || 0));
+            
+            if (filtered.length === 0) {
+                 if (alcorPairsEmpty) {
+                     alcorPairsEmpty.textContent = `Aucune paire trouvée pour ${token}.`;
+                     alcorPairsEmpty.classList.remove('hidden');
+                 }
                  return;
             }
-
-            const unitsCostPerTokenBase = selectedZone.totalTuCost / 4;
-            const unitsDovX = selectedZone.dovxReward;
-
-            const singleDivisionWaxCost = selectedZone.totalTuCost * newPriceCostToken; 
-            const singleDivisionWaxReward = unitsDovX * newPriceDovX; 
             
-            const totalWaxCost = singleDivisionWaxCost * totalMultiplier;
-            const totalWaxReward = singleDivisionWaxReward * totalMultiplier;
-            const netProfitLoss = totalWaxReward - totalWaxCost; 
-            const totalVolume = totalWaxCost + totalWaxReward; 
-            const totalUsdCost = totalWaxCost * priceWaxUsd;
-            const totalUsdReward = totalWaxReward * priceWaxUsd;
-            const netUsdProfitLoss = netProfitLoss * priceWaxUsd; 
-            const totalUsdVolume = totalVolume * priceWaxUsd; 
-
-            // Projections
-            const monthlyNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_MONTH;
-            const annualNetUsdProfitLoss = netUsdProfitLoss * DAYS_IN_YEAR;
-            const monthlyUsdVolume = totalUsdVolume * DAYS_IN_MONTH;
-            const annualUsdVolume = totalUsdVolume * DAYS_IN_YEAR;
-            
-            // ROI
-            let roiDays = Infinity;
-            let roiStatus = 'Non Applicable (Pas d\'investissement)';
-            let roiDailyPercent = 0;
-            
-            if (totalInvestmentWAX > 0) {
-                roiDailyPercent = netProfitLoss / totalInvestmentWAX;
-                if (netProfitLoss > 0) {
-                    roiDays = totalInvestmentWAX / netProfitLoss;
-                    roiStatus = `ROI estimé en ${formatUnits(roiDays)} jours`;
-                } else if (netProfitLoss < 0) {
-                    roiStatus = 'Déficit : ROI impossible';
-                }
-            }
-            const roiMonthlyPercent = roiDailyPercent * DAYS_IN_MONTH;
-
-            // Indicateurs Stratégiques
-            const unitsCostPerTokenBaseFinal = selectedZone.totalTuCost / 4;
-            const totalTuUnitsConsumedDaily = selectedZone.totalTuCost * totalMultiplier;
-            const totalWaxCostDailyCalculated = totalTuUnitsConsumedDaily * newPriceCostToken;
-
-            // Répartition (Section 7)
-            const cbUsd = totalInvestmentUSD * CASH_BACK_PERCENT;
-            const cbWax = totalInvestmentWAX * CASH_BACK_PERCENT;
-            const tmUsd = totalInvestmentUSD * TEAM_PERCENT;
-            const tmWax = totalInvestmentWAX * TEAM_PERCENT;
-            const mtUsd = totalInvestmentUSD * MARKET_TOKEN_PERCENT;
-            const mtWax = totalInvestmentWAX * MARKET_TOKEN_PERCENT;
-            const pbUsd = totalInvestmentUSD * PUB_PERCENT;
-            const pbWax = totalInvestmentWAX * PUB_PERCENT;
-
-
-            // --- Mise à jour du DOM ---
-            
-            // Section 2/3 (WAX/USD Totaux)
-            if(document.getElementById('totalWaxCostValue')) document.getElementById('totalWaxCostValue').textContent = formatWAX(totalWaxCost, 4);
-            if(document.getElementById('unitCostWaxValue')) document.getElementById('unitCostWaxValue').textContent = `"Unitaire TU: ${formatWAX(newPriceCostToken, 8)}"`; 
-            if(document.getElementById('resultReward')) document.getElementById('resultReward').textContent = formatWAX(totalWaxReward, 4);
-            if(document.getElementById('resultVolume')) document.getElementById('resultVolume').textContent = formatWAX(totalVolume, 4);
-            
-            const netElement = document.getElementById('resultNet');
-            if(netElement) {
-                netElement.textContent = formatWAX(netProfitLoss, 4);
-                netElement.classList.toggle('text-green-400', netProfitLoss >= 0);
-                netElement.classList.toggle('text-red-400', netProfitLoss < 0);
-            }
-            if(document.getElementById('resultUsdCost')) document.getElementById('resultUsdCost').textContent = formatUSD(totalUsdCost, 4);
-            if(document.getElementById('resultUsdReward')) document.getElementById('resultUsdReward').textContent = formatUSD(totalUsdReward, 4);
-            if(document.getElementById('resultUsdVolume')) document.getElementById('resultUsdVolume').textContent = formatUSD(totalUsdVolume, 4);
-
-            const netUsdElement = document.getElementById('resultNetUsd');
-            if(netUsdElement) {
-                netUsdElement.textContent = formatUSD(netUsdProfitLoss, 4);
-                netUsdElement.classList.toggle('text-green-400', netUsdProfitLoss >= 0);
-                netUsdElement.classList.toggle('text-red-400', netUsdProfitLoss < 0);
-            }
-            
-            // Section 4 (Projections)
-            if(document.getElementById('resultUsdVolumeMonthly')) document.getElementById('resultUsdVolumeMonthly').textContent = formatUSD(monthlyUsdVolume, 2);
-            if(document.getElementById('resultUsdVolumeAnnual')) document.getElementById('resultUsdVolumeAnnual').textContent = formatUSD(annualUsdVolume, 2);
-            
-            const netUsdMonthlyElement = document.getElementById('resultNetUsdMonthly');
-            if(netUsdMonthlyElement) {
-                netUsdMonthlyElement.textContent = formatUSD(monthlyNetUsdProfitLoss, 2);
-                netUsdMonthlyElement.classList.toggle('text-green-400', monthlyNetUsdProfitLoss >= 0);
-                netUsdMonthlyElement.classList.toggle('text-red-400', monthlyNetUsdProfitLoss < 0);
-            }
-            const netUsdAnnualElement = document.getElementById('resultNetUsdAnnual');
-            if(netUsdAnnualElement) {
-                netUsdAnnualElement.textContent = formatUSD(annualNetUsdProfitLoss, 2);
-                netUsdAnnualElement.classList.toggle('text-green-400', annualNetUsdProfitLoss >= 0);
-                netUsdAnnualElement.classList.toggle('text-red-400', annualNetUsdProfitLoss < 0);
-            }
-            
-            // Section 5 (ROI)
-            if(document.getElementById('resultTotalInvestment')) document.getElementById('resultTotalInvestment').textContent = formatWAX(totalInvestmentWAX, 0);
-
-            const roiDailyPercentElement = document.getElementById('resultRoiDailyPercent');
-            if(roiDailyPercentElement) {
-                roiDailyPercentElement.textContent = formatPercent(roiDailyPercent, 4);
-                roiDailyPercentElement.classList.toggle('text-green-400', roiDailyPercent >= 0);
-                roiDailyPercentElement.classList.toggle('text-red-4400', roiDailyPercent < 0);
-            }
-            
-            const roiMonthlyPercentElement = document.getElementById('resultRoiMonthlyPercent');
-            if(roiMonthlyPercentElement) {
-                roiMonthlyPercentElement.textContent = formatPercent(roiMonthlyPercent, 2);
-                roiMonthlyPercentElement.classList.toggle('text-green-400', roiMonthlyPercent >= 0);
-                roiMonthlyPercentElement.classList.toggle('text-red-400', roiMonthlyPercent < 0);
-            }
-
-            if(document.getElementById('resultRoiDays')) document.getElementById('resultRoiDays').textContent = (roiDays === Infinity) ? '--' : formatUnits(roiDays);
-            
-            const roiStatusElement = document.getElementById('resultRoiStatus');
-            if(roiStatusElement) {
-                roiStatusElement.textContent = roiStatus;
-                roiStatusElement.classList.remove('text-green-400', 'text-red-400', 'text-lime-400', 'text-gray-400');
-                if (roiDays !== Infinity && netProfitLoss > 0) {
-                    roiStatusElement.classList.add('text-green-400');
-                } else if (netProfitLoss < 0) {
-                    roiStatusElement.classList.add('text-red-400');
-                } else {
-                     roiStatusElement.classList.add('text-gray-400'); 
-                }
-            }
-
-            // Section 6 (Consommation)
+            // Construire le HTML du tableau
             let html = '';
-            let totalWaxCostBase = 0;
-            let totalUnitsConsumedDailySum = 0;
-
-            for (const token of COST_TOKENS) {
-                const unitsConsumed = unitsCostPerTokenBase;
-                const waxCostPerToken = unitsConsumed * newPriceCostToken;
-                const totalDailyUnits = unitsConsumed * totalMultiplier; 
-
-                totalWaxCostBase += waxCostPerToken;
-                totalUnitsConsumedDailySum += totalDailyUnits;
-
+            filtered.forEach(pair => {
+                const baseName = pair.base?.symbol?.name || '';
+                const quoteName = pair.quote?.symbol?.name || '';
+                const baseContract = pair.base?.symbol?.contract || '';
+                const pairName = `${baseName}/${quoteName}`;
+                const price = pair.last_price ? parseFloat(pair.last_price) : 0;
+                
                 html += `
-                    <tr class="hover:bg-gray-800/60">
-                        <td class="p-3 font-semibold text-red-300">${token}</td>
-                        <td class="p-3 text-right">${formatUnits(unitsConsumed)} unités</td>
-                        <td class="p-3 text-right text-red-300 font-bold">${formatUnits(totalDailyUnits)} unités</td>
-                        <td class="p-3 text-right text-red-400">${formatWAX(waxCostPerToken, 6)}</td>
+                    <tr class="border-b border-slate-700/50 hover:bg-purple-500/10 transition-colors">
+                        <td class="px-6 py-4 font-mono text-white">${pairName}</td>
+                        <td class="px-6 py-4 text-right text-slate-300">${price ? price.toFixed(8) : '--'}</td>
+                        <td class="px-6 py-4 text-right text-slate-300">${formatUSD(pair.liquidity || 0, 0)}</td>
+                        <td class="px-6 py-4 text-right text-slate-300">${formatUSD(pair.volume24h_usd || 0, 0)}</td>
+                        <td class="px-6 py-4 text-center">
+                            <a
+                                href="https://alcor.exchange/trade/${pair.market_id}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-block px-4 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors text-xs"
+                            >
+                                Trader
+                            </a>
+                        </td>
                     </tr>
                 `;
-            }
-
-            if(document.getElementById('consumptionTableBody')) document.getElementById('consumptionTableBody').innerHTML = html;
-            if(document.getElementById('totalUnitsConsumedBase')) document.getElementById('totalUnitsConsumedBase').textContent = formatUnits(selectedZone.totalTuCost) + ' unités';
-            if(document.getElementById('totalUnitsConsumedDailySum')) document.getElementById('totalUnitsConsumedDailySum').textContent = formatUnits(totalUnitsConsumedDailySum) + ' unités'; 
-            if(document.getElementById('totalWaxCostBase')) document.getElementById('totalWaxCostBase').textContent = formatWAX(totalWaxCostBase, 6);
-            if(document.getElementById('totalUnitsConsumedDaily')) document.getElementById('totalUnitsConsumedDaily').textContent = formatUnits(totalTuUnitsConsumedDaily) + ' unités';
-            if(document.getElementById('totalWaxCostDaily')) document.getElementById('totalWaxCostDaily').textContent = formatWAX(totalWaxCostDailyCalculated, 4);
-
-            let ratioAmplificationText = "--";
-            if (newPriceCostToken > 0 && unitsCostPerTokenBaseFinal > 0) {
-                const effectiveRatio = (unitsDovX * newPriceDovX) / (unitsCostPerTokenBaseFinal * newPriceCostToken);
-                ratioAmplificationText = effectiveRatio.toFixed(4) + 'x';
-            }
-            if(document.getElementById('unitsDovXGenerated')) document.getElementById('unitsDovXGenerated').textContent = formatUnits(unitsDovX) + ' unités';
-            if(document.getElementById('ratioAmplification')) document.getElementById('ratioAmplification').textContent = ratioAmplificationText;
+            });
             
-            // Section 7 (Répartition)
-            if(document.getElementById('totalInvestmentUsdDisplay')) document.getElementById('totalInvestmentUsdDisplay').textContent = formatUSD(totalInvestmentUSD, 2);
-            // CORRECTION: Remplacer l'ancienne référence par la nouvelle ID unique dans cette section.
-            if(document.getElementById('totalInvestmentWaxDisplay')) document.getElementById('totalInvestmentWaxDisplay').textContent = formatWAX(totalInvestmentWAX, 0);
+            if (alcorPairsBody) alcorPairsBody.innerHTML = html;
+        };
+        
+        // --- Fin: Fonctions de suivi des Paires Alcor ---
+
+        // --- Fonctions de Calcul Global ---
+
+        // Fonction de calcul principale pour le volume (Sections 2-7)
+        const calculateVolume = (tokenPrices) => {
+            const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
+            
+            // 1. Inputs du volume
+            const numberOfAccounts = parseInt(numberOfAccountsInput.value) || 0;
+            const divisionsPerAccount = parseInt(divisionsPerAccountInput.value) || 0;
+            const numberOfPacks = parseInt(numberOfPacksInput.value) || 0;
+            const divisionsPerPack = parseInt(divisionsPerPackInput.value) || 0;
+            const pricePerPackWax = parseFrenchFloat(pricePerPackWaxInput.value) || 0;
+            const selectedZoneIndex = parseInt(zoneSelector.value);
+            const selectedZone = ZONE_DATA[selectedZoneIndex];
+
+            // Total Divisions en déploiement
+            const totalDivisionsDeployed = numberOfAccounts * divisionsPerAccount;
+            const totalDivisionsPurchased = numberOfPacks * divisionsPerPack;
+
+            // Mise à jour de l'affichage du total des divisions achetées (capacité)
+            if(document.getElementById('resultTotalDivisionsPurchased')) {
+                document.getElementById('resultTotalDivisionsPurchased').textContent = formatUnits(totalDivisionsPurchased) + ' Divisions';
+            }
+
+            if (!selectedZone || totalDivisionsDeployed === 0 || priceWaxUsd <= 0 || newPriceDovX <= 0 || newPriceCostToken <= 0) {
+                // Rétablir l'affichage à défaut
+                const defaultValues = [
+                    'resultCost', 'resultReward', 'resultNet', 'resultVolume',
+                    'resultUsdCost', 'resultUsdReward', 'resultUsdVolume', 'resultNetUsd',
+                    'resultNetUsdMonthly', 'resultNetUsdAnnual', 'resultUsdVolumeMonthly', 'resultUsdVolumeAnnual',
+                    'resultTotalInvestment', 'resultRoiDays', 'resultRoiDailyPercent', 'resultRoiMonthlyPercent',
+                    'cashBackUsd', 'cashBackWax', 'teamUsd', 'teamWax', 'marketTokenUsd', 'marketTokenWax', 'pubUsd', 'pubWax',
+                    'totalInvestmentUsdDisplay', 'totalInvestmentWaxDisplay',
+                ];
+                defaultValues.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = '--';
+                });
+                if(document.getElementById('resultRoiStatus')) document.getElementById('resultRoiStatus').textContent = '--';
+                if(document.getElementById('totalWaxCostValue')) document.getElementById('totalWaxCostValue').textContent = '--';
+                if(document.getElementById('unitCostWaxValue')) document.getElementById('unitCostWaxValue').textContent = "Unitaire TU: --";
+                if(document.getElementById('unitsDovXGenerated')) document.getElementById('unitsDovXGenerated').textContent = '--';
+                if(document.getElementById('ratioAmplification')) document.getElementById('ratioAmplification').textContent = '--';
+                return;
+            }
+
+            // --- 2. Calculs quotidiens (par division unitaire) ---
+            const dailyTuCostPerDivision = selectedZone.totalTuCost;
+            const dailyDovxRewardPerDivision = selectedZone.dovxReward;
+            
+            const waxCostPerTu = newPriceCostToken;
+
+            // Coût unitaire (par division)
+            const dailyWaxCostPerDivision = dailyTuCostPerDivision * waxCostPerTu;
+            const dailyWaxRewardPerDivision = dailyDovxRewardPerDivision * newPriceDovX;
+
+            // --- 3. Calculs agrégés (Volume) ---
+            const totalDailyWaxCost = dailyWaxCostPerDivision * totalDivisionsDeployed;
+            const totalDailyWaxReward = dailyWaxRewardPerDivision * totalDivisionsDeployed;
+            const totalDailyNetWax = totalDailyWaxReward - totalDailyWaxCost;
+            const totalDailyVolumeWax = totalDailyWaxCost + totalDailyWaxReward;
+
+            // --- 4. Conversions USD ---
+            const totalDailyNetUsd = totalDailyNetWax * priceWaxUsd;
+            const totalDailyCostUsd = totalDailyWaxCost * priceWaxUsd;
+            const totalDailyRewardUsd = totalDailyWaxReward * priceWaxUsd;
+            const totalDailyVolumeUsd = totalDailyVolumeWax * priceWaxUsd;
+            
+            // --- 5. Projections (Mensuel / Annuel) ---
+            const monthlyNetUsd = totalDailyNetUsd * DAYS_IN_MONTH;
+            const annualNetUsd = totalDailyNetUsd * DAYS_IN_YEAR;
+            const monthlyVolumeUsd = totalDailyVolumeUsd * DAYS_IN_MONTH;
+            const annualVolumeUsd = totalDailyVolumeUsd * DAYS_IN_YEAR;
+
+            // --- 6. ROI / Investissement ---
+            const totalInvestmentWax = numberOfPacks * pricePerPackWax;
+            const totalInvestmentUsd = totalInvestmentWax * priceWaxUsd;
+
+            let roiDays = Infinity;
+            let roiDailyPercent = 0;
+            let roiMonthlyPercent = 0;
+            let roiStatus = 'Déficitaire ou Investissement nul';
+
+            if (totalInvestmentUsd > 0) {
+                roiDailyPercent = totalDailyNetUsd / totalInvestmentUsd;
+                roiMonthlyPercent = monthlyNetUsd / totalInvestmentUsd;
+                
+                if (totalDailyNetUsd > 0) {
+                    roiDays = totalInvestmentUsd / totalDailyNetUsd;
+                    roiStatus = `Rentable en ${formatUnits(roiDays)} jours`;
+                } else if (totalDailyNetUsd < 0) {
+                    roiStatus = 'Déficitaire';
+                    roiDays = Infinity;
+                } else {
+                    roiStatus = 'Neutre (0$)';
+                    roiDays = Infinity;
+                }
+            } else if (totalDivisionsDeployed > 0) {
+                 roiStatus = 'Pas de Packs achetés (Production pure)';
+                 roiDays = 0; 
+                 roiDailyPercent = 1; // Gain immédiat
+                 roiMonthlyPercent = Infinity;
+            }
+
+            // --- 7. Répartition des Revenus des Packs (Section 7) ---
+            const totalPacksInvestmentUsd = numberOfPacks * parseFrenchFloat(packDesignPriceUsdInput.value || 0);
+            const totalPacksInvestmentWax = totalPacksInvestmentUsd / priceWaxUsd;
+
+            const cbUsd = totalPacksInvestmentUsd * CASH_BACK_PERCENT;
+            const tmUsd = totalPacksInvestmentUsd * TEAM_PERCENT;
+            const mtUsd = totalPacksInvestmentUsd * MARKET_TOKEN_PERCENT;
+            const pbUsd = totalPacksInvestmentUsd * PUB_PERCENT;
+
+            const cbWax = totalPacksInvestmentWax * CASH_BACK_PERCENT;
+            const tmWax = totalPacksInvestmentWax * TEAM_PERCENT;
+            const mtWax = totalPacksInvestmentWax * MARKET_TOKEN_PERCENT;
+            const pbWax = totalPacksInvestmentWax * PUB_PERCENT;
+
+            // --- 8. Mise à jour de la Table de Consommation (Section 6) ---
+            const consumptionTableBody = document.getElementById('consumptionTableBody');
+            if (consumptionTableBody) {
+                consumptionTableBody.innerHTML = '';
+                
+                // Les coûts de combat par division sont divisés par 4 pour les 4 jetons TU
+                const costPerTokenPerDivision = dailyTuCostPerDivision / COST_TOKENS.length;
+
+                let sumTotalUnitsConsumedDaily = 0;
+                let sumTotalWaxCostBase = 0;
+                
+                COST_TOKENS.forEach(token => {
+                    const totalDailyUnits = costPerTokenPerDivision * totalDivisionsDeployed;
+                    const dailyWaxCost = costPerTokenPerDivision * newPriceCostToken;
+                    
+                    sumTotalUnitsConsumedDaily += totalDailyUnits;
+                    sumTotalWaxCostBase += dailyWaxCost;
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-800/40';
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-red-300">${token}</td>
+                        <td class="p-3 text-right">${formatUnits(costPerTokenPerDivision)} TU</td>
+                        <td class="p-3 text-right font-bold text-red-400">${formatUnits(totalDailyUnits)} TU</td>
+                        <td class="p-3 text-right">${formatWAX(dailyWaxCost, 6)}</td>
+                    `;
+                    consumptionTableBody.appendChild(tr);
+                });
+
+                if(document.getElementById('totalUnitsConsumedDaily')) document.getElementById('totalUnitsConsumedDaily').textContent = formatUnits(sumTotalUnitsConsumedDaily) + ' TU';
+                if(document.getElementById('totalWaxCostDaily')) document.getElementById('totalWaxCostDaily').textContent = formatWAX(sumTotalWaxCostBase * totalDivisionsDeployed, 4);
+                
+                // Mise à jour du pied de page du tableau pour la section 6
+                if(document.getElementById('totalUnitsConsumedBase')) document.getElementById('totalUnitsConsumedBase').textContent = formatUnits(dailyTuCostPerDivision) + ' TU';
+                if(document.getElementById('totalUnitsConsumedDailySum')) document.getElementById('totalUnitsConsumedDailySum').textContent = formatUnits(sumTotalUnitsConsumedDaily) + ' TU';
+                if(document.getElementById('totalWaxCostBase')) document.getElementById('totalWaxCostBase').textContent = formatWAX(dailyWaxCostPerDivision, 4);
+
+                if(document.getElementById('unitsDovXGenerated')) document.getElementById('unitsDovXGenerated').textContent = formatUnits(dailyDovxRewardPerDivision) + ' DOVX';
+                
+                // Ratio d'amplification (Combien d'unités DOVX vs 1 unité TU)
+                const amplificationRatio = (newPriceDovX > 0 && newPriceCostToken > 0) ? (newPriceDovX / newPriceCostToken) : 0;
+                if(document.getElementById('ratioAmplification')) document.getElementById('ratioAmplification').textContent = formatUnits(amplificationRatio) + ' X';
+            }
+
+
+            // --- 9. Mise à jour de l'affichage global (Sections 2-7) ---
+
+            // Section 2: WAX
+            if(document.getElementById('totalWaxCostValue')) document.getElementById('totalWaxCostValue').textContent = formatWAX(totalDailyWaxCost, 4);
+            if(document.getElementById('unitCostWaxValue')) document.getElementById('unitCostWaxValue').textContent = "Unitaire TU: " + formatWAX(waxCostPerTu, 8);
+            if(document.getElementById('resultReward')) document.getElementById('resultReward').textContent = formatWAX(totalDailyWaxReward, 4);
+            
+            if(document.getElementById('resultNet')) {
+                document.getElementById('resultNet').textContent = formatWAX(totalDailyNetWax, 4);
+                document.getElementById('resultNet').classList.toggle('text-green-400', totalDailyNetWax >= 0);
+                document.getElementById('resultNet').classList.toggle('text-red-400', totalDailyNetWax < 0);
+            }
+            if(document.getElementById('resultVolume')) document.getElementById('resultVolume').textContent = formatWAX(totalDailyVolumeWax, 4);
+            
+            // Section 3: USD
+            if(document.getElementById('resultUsdCost')) document.getElementById('resultUsdCost').textContent = formatUSD(totalDailyCostUsd, 4);
+            if(document.getElementById('resultUsdReward')) document.getElementById('resultUsdReward').textContent = formatUSD(totalDailyRewardUsd, 4);
+            if(document.getElementById('resultUsdVolume')) document.getElementById('resultUsdVolume').textContent = formatUSD(totalDailyVolumeUsd, 4);
+            
+            if(document.getElementById('resultNetUsd')) {
+                document.getElementById('resultNetUsd').textContent = formatUSD(totalDailyNetUsd, 4);
+                document.getElementById('resultNetUsd').classList.toggle('text-green-400', totalDailyNetUsd >= 0);
+                document.getElementById('resultNetUsd').classList.toggle('text-red-400', totalDailyNetUsd < 0);
+            }
+
+            // Section 4: Projections
+            if(document.getElementById('resultNetUsdMonthly')) document.getElementById('resultNetUsdMonthly').textContent = formatUSD(monthlyNetUsd, 2);
+            if(document.getElementById('resultNetUsdAnnual')) document.getElementById('resultNetUsdAnnual').textContent = formatUSD(annualNetUsd, 0);
+            if(document.getElementById('resultUsdVolumeMonthly')) document.getElementById('resultUsdVolumeMonthly').textContent = formatUSD(monthlyVolumeUsd, 0);
+            if(document.getElementById('resultUsdVolumeAnnual')) document.getElementById('resultUsdVolumeAnnual').textContent = formatUSD(annualVolumeUsd, 0);
+
+            // Section 5: ROI
+            if(document.getElementById('resultTotalInvestment')) document.getElementById('resultTotalInvestment').textContent = formatWAX(totalInvestmentWax, 0);
+            if(document.getElementById('resultRoiDays')) document.getElementById('resultRoiDays').textContent = isFinite(roiDays) ? formatUnits(roiDays) + ' Jours' : '--';
+            if(document.getElementById('resultRoiStatus')) {
+                 document.getElementById('resultRoiStatus').textContent = roiStatus;
+                 document.getElementById('resultRoiStatus').classList.remove('text-green-400', 'text-red-400', 'text-yellow-400');
+                 if (totalDailyNetUsd > 0) {
+                     document.getElementById('resultRoiStatus').classList.add('text-green-400');
+                 } else if (totalDailyNetUsd < 0) {
+                     document.getElementById('resultRoiStatus').classList.add('text-red-400');
+                 } else {
+                     document.getElementById('resultRoiStatus').classList.add('text-yellow-400');
+                 }
+            }
+            if(document.getElementById('resultRoiDailyPercent')) document.getElementById('resultRoiDailyPercent').textContent = formatPercent(roiDailyPercent, 4);
+            if(document.getElementById('resultRoiMonthlyPercent')) document.getElementById('resultRoiMonthlyPercent').textContent = formatPercent(roiMonthlyPercent, 2);
+
+            // Section 7: Répartition des revenus (Packs)
+            if(document.getElementById('totalInvestmentUsdDisplay')) document.getElementById('totalInvestmentUsdDisplay').textContent = formatUSD(totalPacksInvestmentUsd, 2);
+            if(document.getElementById('totalInvestmentWaxDisplay')) document.getElementById('totalInvestmentWaxDisplay').textContent = formatWAX(totalPacksInvestmentWax, 0);
             
             if(document.getElementById('cashBackUsd')) document.getElementById('cashBackUsd').textContent = formatUSD(cbUsd, 2);
             if(document.getElementById('cashBackWax')) document.getElementById('cashBackWax').textContent = formatWAX(cbWax, 0);
@@ -2538,144 +2391,565 @@
 
             if(document.getElementById('pubUsd')) document.getElementById('pubUsd').textContent = formatUSD(pbUsd, 2);
             if(document.getElementById('pubWax')) document.getElementById('pubWax').textContent = formatWAX(pbWax, 0);
+            
+        };
+        
+        // Fonction qui regroupe tous les calculs lors d'un changement d'input
+        const calculate = () => {
+            // 1. Mise à jour des prix des jetons et WAX/USD
+            let newPriceDovX = parseFrenchFloat(dovxPriceManualInput.value) || 0;
+            if (newPriceDovX < 0) newPriceDovX = 0; // Sécurité
+
+            // Mise à jour de la réglette si l'input manuel change
+            if (dovxPriceSlider) dovxPriceSlider.value = newPriceDovX.toFixed(8);
+            
+            // Calcul du prix TU (basé sur le ratio fixe)
+            let newPriceCostToken = newPriceDovX / DOVX_TO_TU_RATIO;
+            if (newPriceDovX === 0) newPriceCostToken = 0; // Éviter l'Infinity si le ratio est 0
+
+            // Mise à jour des variables globales
+            currentPriceDovX = newPriceDovX;
+            currentPriceCostToken = newPriceCostToken;
+            currentPriceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value) || 0;
+
+            // Mise à jour de l'affichage du prix TU
+            if(priceCostTokenCalculated) priceCostTokenCalculated.value = currentPriceCostToken.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+
+            const tokenPrices = { 
+                newPriceDovX: currentPriceDovX, 
+                newPriceCostToken: currentPriceCostToken, 
+                priceWaxUsd: currentPriceWaxUsd 
+            };
+            
+            // 2. Exécuter les calculs pour toutes les sections
+            calculateVolume(tokenPrices);        // Sections 2-7
+            calculatePackDesign(tokenPrices);    // Section 8
+            updateBuildingTable(tokenPrices);    // Section 9
+            calculateLpResults(tokenPrices);     // Section 13.2
+            
+            // Note: Sniper (Section 12) et Arbitrage (Section 13.1) sont déclenchés par bouton
+
+        };
+        
+        // Fonction pour gérer l'appel Gemini API pour le Lore
+        const handleAiLoreGeneration = async () => {
+            if (!packNameInput.value || !packCompositionInput.value) {
+                aiLoreOutput.textContent = "Veuillez entrer un nom de pack et une composition valide avant de générer le Lore.";
+                aiLoreOutput.classList.remove('hidden', 'text-gray-300');
+                aiLoreOutput.classList.add('text-red-400');
+                return;
+            }
+            
+            const packName = packNameInput.value;
+            const composition = packCompositionInput.value;
+            const price = packDesignPriceUsdInput.value;
+            
+            const userPrompt = `Rédige un "Lore" ou une histoire courte, de fiction militaire (type Seconde Guerre Mondiale / Futuriste) pour le pack de jeu NFT "Dawn of Victory" suivant. Le Lore doit inclure : le nom du pack, sa composition, le prix, et une mission épique.
+            - Nom du Pack: ${packName}
+            - Composition: ${composition}
+            - Prix estimé: ${price} USD
+            - Ton: Épique, militaire, engageant.
+            Limite la réponse à un seul paragraphe de 5 à 7 lignes.`;
+            
+            const systemPrompt = "Vous êtes un Maître de Jeu (Game Master) expert en Lore militaire et science-fiction. Vous écrivez des descriptions immersives et captivantes.";
+
+            aiLoreOutput.classList.remove('text-red-400');
+            aiLoreOutput.classList.add('text-gray-300');
+            aiLoreOutput.textContent = "Génération du Lore par l'IA en cours... Veuillez patienter.";
+            aiLoreOutput.classList.remove('hidden');
+            btnAiLore.disabled = true;
+            btnAiLore.classList.add('ai-loading');
+
+
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                // Google Search est désactivé car nous générons de la fiction (lore).
+            };
+
+            try {
+                const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erreur API: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text || "Erreur: Contenu non généré ou structure inattendue.";
+                
+                aiLoreOutput.textContent = generatedText.trim();
+                aiLoreOutput.classList.remove('text-red-400');
+
+            } catch (error) {
+                console.error("Erreur lors de l'appel Gemini:", error);
+                aiLoreOutput.textContent = `Erreur: Échec de la communication avec l'IA. (${error.message})`;
+                aiLoreOutput.classList.remove('text-gray-300');
+                aiLoreOutput.classList.add('text-red-400');
+            } finally {
+                btnAiLore.disabled = false;
+                btnAiLore.classList.remove('ai-loading');
+            }
         };
 
-        // --- Fonctions d'Attachement des Événements ---
-
-        const attachEventListeners = () => {
-            if (btnFetchPrice) btnFetchPrice.addEventListener('click', fetchLiveWaxPrice);
-            if (priceWaxUsdInput) priceWaxUsdInput.addEventListener('input', calculate);
-
-            // Synchronisation bi-directionnelle DOVX
-            if (dovxPriceSlider) {
-                dovxPriceSlider.addEventListener('input', () => {
-                    if (dovxPriceManualInput) dovxPriceManualInput.value = parseFloat(dovxPriceSlider.value).toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
-                    calculate();
-                });
+        // --- Fonctions d'API réel (CoinGecko) ---
+        const fetchLiveWaxPrice = async () => {
+             const coinGeckoUrl = "https://api.coingecko.com/api/v3/simple/price?ids=wax&vs_currencies=usd";
+             
+             if(btnFetchPrice) {
+                 btnFetchPrice.disabled = true;
+                 btnFetchPrice.textContent = '...';
+             }
+             
+             try {
+                 const response = await fetch(coinGeckoUrl);
+                 const data = await response.json();
+                 
+                 if (data && data.wax && data.wax.usd) {
+                     const newPrice = data.wax.usd;
+                     currentPriceWaxUsd = newPrice;
+                     if(priceWaxUsdInput) {
+                         priceWaxUsdInput.value = newPrice.toLocaleString('fr-FR', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+                     }
+                     calculate(); // Recalculer avec le nouveau prix WAX/USD
+                     return true;
+                 }
+                 throw new Error("Format de réponse CoinGecko invalide.");
+             } catch (error) {
+                 console.error("Erreur lors de la récupération du prix WAX/USD:", error);
+                 // Rétablit le prix par défaut en cas d'échec
+                 currentPriceWaxUsd = parseFrenchFloat(priceWaxUsdInput.value) || 0.05;
+                 calculate(); // Calcule quand même avec le prix manuel
+                 return false;
+             } finally {
+                 if(btnFetchPrice) {
+                     btnFetchPrice.disabled = false;
+                     btnFetchPrice.textContent = '🔄 Live';
+                 }
+             }
+        };
+        
+        // Fonction de gestion du scan du wallet (Section 10)
+        const handleWalletScan = async () => {
+            const walletAddress = walletAddressInput.value.trim().toLowerCase();
+            if (!walletAddress) {
+                // Remplacé alert() par une boite de message temporaire si nécessaire, mais ici on le laisse dans la console
+                console.error("Veuillez entrer une adresse WAX valide (ex: user.wam).");
+                return;
             }
-            if (dovxPriceManualInput) {
-                dovxPriceManualInput.addEventListener('input', () => {
-                    let val = parseFrenchFloat(dovxPriceManualInput.value) || 0;
-                    const maxVal = parseFloat(dovxPriceSlider.max);
-                    const minVal = parseFloat(dovxPriceSlider.min);
-                    let boundedVal = Math.max(minVal, Math.min(maxVal, val));
-                    if (dovxPriceSlider) dovxPriceSlider.value = boundedVal.toFixed(8);
-                    dovxPriceManualInput.value = val.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 }); // Re-formatage pour cohérence
-                    calculate();
-                });
+
+            if(btnScanWallet) {
+                btnScanWallet.disabled = true;
+                btnScanWallet.textContent = 'Scanning...';
+                walletResultsContainer.classList.add('scanning');
+            }
+            
+            scannedWalletData = [];
+            walletAssetsBody.innerHTML = '';
+            
+            const limit = 1000;
+            let page = 1;
+            let totalAssets = 0;
+            let fetchSuccessful = false;
+            
+            // Boucle pour essayer différents endpoints en cas d'échec
+            for (const endpoint of ATOMIC_ENDPOINTS) {
+                const baseAssetUrl = `${endpoint}?collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}&owner=${walletAddress}&limit=${limit}`;
+                page = 1; // Réinitialiser la page pour chaque endpoint
+                scannedWalletData = []; // Vider les données partielles
+                totalAssets = 0;
+                
+                while (true) {
+                     const url = `${baseAssetUrl}&page=${page}`;
+                     try {
+                         const response = await fetch(url);
+                         const data = await response.json();
+                         
+                         if (data.success && data.data) {
+                             if (data.data.length > 0) {
+                                 scannedWalletData.push(...data.data);
+                                 totalAssets += data.data.length;
+                                 
+                                 if (data.data.length < limit) {
+                                     fetchSuccessful = true;
+                                     break; // Fin de l'asset loading pour cet endpoint
+                                 }
+                                 page++;
+                             } else {
+                                 fetchSuccessful = true; // Succès de l'API mais pas d'assets ou fin de la liste
+                                 break;
+                             }
+                         } else {
+                             // L'API répond mais signale un échec (ex: 404, 500)
+                             throw new Error(`API Error: ${data.message || 'Unknown API response error'}`);
+                         }
+                     } catch (error) {
+                         console.error(`Erreur lors de la récupération des assets AtomicAssets (Endpoint ${endpoint}):`, error);
+                         // Continuer à essayer le prochain endpoint
+                         break; 
+                     }
+                }
+                
+                if (fetchSuccessful) break; // Sortir de la boucle des endpoints si le fetch est réussi
             }
 
-            // Événements généraux pour les calculs de volume (Section 1-7)
-            const inputsToWatch = [
-                numberOfAccountsInput, divisionsPerAccountInput, zoneSelector,
-                numberOfPacksInput, divisionsPerPackInput, pricePerPackWaxInput // WAX est désormais l'entrée unique
-            ];
-            inputsToWatch.forEach(input => {
-                if (input) input.addEventListener('input', calculate);
+            if(btnScanWallet) {
+                btnScanWallet.disabled = false;
+                btnScanWallet.textContent = 'Scanner le Portefeuille';
+                walletResultsContainer.classList.remove('scanning');
+            }
+            
+            if (!fetchSuccessful && totalAssets === 0) {
+                 walletAssetsBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-400">Échec de la connexion à l'API AtomicAssets après plusieurs tentatives.</td></tr>`;
+                 walletTotalBuildingsEl.textContent = '0';
+                 walletMonthlyWaxEl.textContent = '--';
+                 walletMonthlyUsdEl.textContent = '--';
+                 walletScenarioSummary.textContent = "Erreur de connexion. Vérifiez l'adresse WAX et réessayez.";
+                 walletResultsContainer.classList.remove('hidden');
+                 return;
+            }
+            
+            // Calculer les gains avec les données récupérées
+            calculateWalletEarnings({ 
+                newPriceDovX: currentPriceDovX, 
+                newPriceCostToken: currentPriceCostToken, 
+                priceWaxUsd: currentPriceWaxUsd 
             });
 
-            // Événements pour le créateur de pack bâtiment (Section 11)
-            if (packBuildingSelect) packBuildingSelect.addEventListener('change', calculate); 
-            if (packBuildingQtyInput) packBuildingQtyInput.addEventListener('input', calculate);
-            if (packToolMultiplierInput) packToolMultiplierInput.addEventListener('input', calculate);
-            if (packBuildingPriceInput) packBuildingPriceInput.addEventListener('input', calculate);
+            walletTotalBuildingsEl.textContent = totalAssets.toLocaleString();
+            walletResultsContainer.classList.remove('hidden');
 
-            // Événements pour les autres entrées qui affectent le simulateur de pack
-            if (packDesignZoneSelector) packDesignZoneSelector.addEventListener('change', calculate);
-            if (packDesignPriceUsdInput) packDesignPriceUsdInput.addEventListener('input', calculate);
-
-            // Événements pour le calculateur LP (Section 13.2)
-            if (lpDovxWaxAmountInput) lpDovxWaxAmountInput.addEventListener('input', calculate);
-            if (lpTuWaxAmountInput) lpTuWaxAmountInput.addEventListener('input', calculate);
-            if (lpDovxTuAmountInput) lpDovxTuAmountInput.addEventListener('input', calculate);
-
-            // Événement AI Lore
-            if (btnAiLore) {
-                btnAiLore.addEventListener('click', async () => {
-                    const outputDiv = aiLoreOutput;
-                    const btn = btnAiLore;
-                    
-                    if (outputDiv && packNameInput && packCompositionInput) {
-                        outputDiv.classList.remove('hidden');
-                        outputDiv.innerHTML = `<span class="text-yellow-400 font-bold">Génération de la description...</span> <span class="ai-loading inline-block w-3 h-3 bg-teal-400 rounded-full ml-2"></span>`;
-                        if (btn) btn.disabled = true;
-
-                        const packName = packNameInput.value;
-                        const composition = packCompositionInput.value;
-
-                        const prompt = `Tu es un officier de l'intendance de Dawn of Victory. Écris une courte description (max 40 mots) pour un pack de ravitaillement nommé "${packName}".
-                        Contenu : ${composition}. 
-                        Le ton doit être militaire, sci-fi et épique.`;
-
-                        const text = await callGemini(prompt);
-                        
-                        outputDiv.innerHTML = `"${text}"`;
-                        if (btn) btn.disabled = false;
-                    }
-                });
+            if (totalAssets === 0) {
+                walletAssetsBody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-gray-400">Aucun bâtiment de production DovDivision trouvé.</td></tr>`;
+                walletScenarioSummary.textContent = "Aucun actif trouvé. Vos gains mensuels sont de 0 $ pour cette simulation.";
             }
 
-            // NOUVEL ÉVÉNEMENT : Arbitrage Scan (Section 13)
-            if (btnArbitrageScan) {
-                 btnArbitrageScan.addEventListener('click', handleArbitrageScan);
+        };
+        
+        // Calcule les gains du wallet à partir des données `scannedWalletData`
+        const calculateWalletEarnings = (tokenPrices) => {
+             const { newPriceDovX, newPriceCostToken, priceWaxUsd } = tokenPrices;
+             
+             let totalMonthlyNetWax = 0;
+             let bodyHtml = '';
+             let maxProfitBuilding = null;
+             let maxProfit = -Infinity;
+
+             // Regrouper les assets par template pour ne pas avoir 1000 lignes
+             const groupedAssets = {};
+             scannedWalletData.forEach(asset => {
+                 const templateId = asset.template_id;
+                 const buildingTemplate = BUILDING_DATA.find(b => templateId.toString().includes(b.rarityCode + '_F')); 
+                 
+                 if (!buildingTemplate) return; 
+
+                 if (!groupedAssets[templateId]) {
+                     groupedAssets[templateId] = {
+                         name: buildingTemplate.name,
+                         cssClass: buildingTemplate.cssClass,
+                         qty: 0,
+                         monthlyNetUsd: 0,
+                         dailyNetWax: 0
+                     };
+                 }
+                 groupedAssets[templateId].qty += 1;
+                 
+                 // Calcul de la marge journalière (basé sur la Section 9)
+                 const dailyCostDovx = buildingTemplate.dovxCost * 24;
+                 const dailyCostWax = dailyCostDovx * newPriceDovX;
+                 
+                 const dailyProdTu = buildingTemplate.prodPerHour * 24;
+                 const dailyRevenueWax = dailyProdTu * newPriceCostToken;
+                 
+                 const dailyNetWax = dailyRevenueWax - dailyCostWax;
+                 const monthlyNetWax = dailyNetWax * DAYS_IN_MONTH;
+                 const monthlyNetUsd = monthlyNetWax * priceWaxUsd;
+                 
+                 groupedAssets[templateId].monthlyNetUsd += monthlyNetUsd;
+                 groupedAssets[templateId].dailyNetWax = dailyNetWax;
+                 
+                 totalMonthlyNetWax += monthlyNetWax;
+
+                 // Suivi du meilleur bâtiment (pour le résumé du scénario)
+                 if (monthlyNetUsd > maxProfit) {
+                    maxProfit = monthlyNetUsd;
+                    maxProfitBuilding = buildingTemplate.name;
+                 }
+             });
+             
+             // Affichage dans le tableau
+             for (const templateId in groupedAssets) {
+                 const assetGroup = groupedAssets[templateId];
+                 bodyHtml += `
+                     <tr>
+                         <td class="p-3 text-left ${assetGroup.cssClass} font-semibold">${assetGroup.name}</td>
+                         <td class="p-3 text-center">${assetGroup.qty}</td>
+                         <td class="p-3 text-right font-bold ${assetGroup.monthlyNetUsd >= 0 ? 'text-green-400' : 'text-red-400'}">${formatUSD(assetGroup.monthlyNetUsd, 2)}</td>
+                     </tr>
+                 `;
+             }
+             
+             const totalMonthlyNetUsd = totalMonthlyNetWax * priceWaxUsd;
+
+             walletAssetsBody.innerHTML = bodyHtml;
+             
+             if (walletMonthlyWaxEl) walletMonthlyWaxEl.textContent = formatWAX(totalMonthlyNetWax, 0);
+             if (walletMonthlyUsdEl) {
+                 walletMonthlyUsdEl.textContent = formatUSD(totalMonthlyNetUsd, 2);
+                 walletMonthlyUsdEl.classList.toggle('text-green-400', totalMonthlyNetUsd >= 0);
+                 walletMonthlyUsdEl.classList.toggle('text-red-400', totalMonthlyNetUsd < 0);
+             }
+
+             // Mise à jour du résumé de scénario
+             if (walletScenarioSummary) {
+                 if (totalMonthlyNetUsd > 0) {
+                     walletScenarioSummary.textContent = `Scénario actuel: Votre portefeuille (soit ${scannedWalletData.length} bâtiments) génère un rendement net de ${formatUSD(totalMonthlyNetUsd, 2)} par mois. Votre meilleur gain unitaire est pour le ${maxProfitBuilding} (si présent).`;
+                 } else if (totalMonthlyNetUsd < 0) {
+                     walletScenarioSummary.textContent = `Scénario critique: Votre portefeuille a un déficit net de ${formatUSD(totalMonthlyNetUsd, 2)} par mois. Vos coûts opérationnels dépassent les revenus.`;
+                 } else {
+                     walletScenarioSummary.textContent = "Scénario neutre: Votre portefeuille est à l'équilibre (0 $ de gain net mensuel).";
+                 }
+             }
+
+        };
+        
+        // Fonction de gestion du Sniper de Marché (Section 12)
+        const handleMarketScan = async () => {
+            if (!currentPriceDovX || !currentPriceCostToken || !currentPriceWaxUsd) {
+                console.error("Veuillez définir les prix WAX/USD, DOVX/WAX et TU/WAX (Section 1).");
+                return;
+            }
+
+            if(btnScanMarket) {
+                btnScanMarket.disabled = true;
+                btnScanMarket.textContent = 'Scanning...';
+                marketSniperSection.classList.add('scanning');
+            }
+            marketResultsContainer.classList.add('hidden');
+            marketDealsBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-yellow-400">Recherche des meilleures offres en cours sur AtomicHub...</td></tr>`;
+
+            const maxRoiDays = parseInt(marketRoiFilter.value) || 365;
+            
+            const limit = 100;
+            let page = 1;
+            let allSales = [];
+            let fetchSuccessful = false;
+            
+            // Boucle pour essayer différents endpoints
+            for (const endpoint of ATOMIC_MARKET_ENDPOINTS) {
+                const baseMarketUrl = `${endpoint}?collection_name=${TARGET_COLLECTION_NAME}&schema_name=${TARGET_SCHEMA_NAME}&state=1&limit=${limit}&order=asc&sort=price`;
+                page = 1; 
+                allSales = [];
+                
+                while (true) {
+                     const url = `${baseMarketUrl}&page=${page}`;
+                     try {
+                         const response = await fetch(url);
+                         const data = await response.json();
+                         
+                         if (data.success && data.data && data.data.length > 0) {
+                             allSales.push(...data.data);
+                             fetchSuccessful = true;
+                             
+                             if (data.data.length < limit || page >= 5) break; 
+                             page++;
+                         } else {
+                             fetchSuccessful = true; 
+                             break;
+                         }
+                     } catch (error) {
+                         console.error(`Erreur lors de la récupération des ventes AtomicMarket (Endpoint ${endpoint}):`, error);
+                         break;
+                     }
+                }
+                
+                if (fetchSuccessful) break; 
+            }
+            
+            // Traitement des données
+            let dealHtml = '';
+            let profitableDeals = 0;
+
+            allSales.forEach(sale => {
+                const waxPrice = parseFloat(sale.listing_price) / (10 ** parseInt(sale.listing_symbol.split(',')[0]));
+                
+                // Trouver les stats du bâtiment correspondant
+                // Nous devons parcourir les assets de la vente, mais on suppose un seul asset pour ce type de vente
+                const asset = sale.assets[0];
+                if (!asset || !asset.template || !asset.template.immutable_data) return;
+                
+                const assetName = asset.template.immutable_data.name;
+                const buildingTemplate = BUILDING_DATA.find(b => assetName.includes(b.type)); 
+                
+                if (!buildingTemplate) return; 
+
+                // Calcul de la rentabilité (identique à Section 9)
+                const dailyCostDovx = buildingTemplate.dovxCost * 24;
+                const dailyCostWax = dailyCostDovx * currentPriceDovX;
+                const dailyProdTu = buildingTemplate.prodPerHour * 24;
+                const dailyRevenueWax = dailyProdTu * currentPriceCostToken;
+                const dailyNetWax = dailyRevenueWax - dailyCostWax;
+
+                // Calcul du ROI
+                let roiDays = Infinity;
+                if (dailyNetWax > 0 && waxPrice > 0) {
+                    roiDays = waxPrice / dailyNetWax;
+                }
+                
+                if (roiDays <= maxRoiDays && roiDays > 0) {
+                    profitableDeals++;
+                    
+                    const priceClass = (waxPrice < (maxRoiDays * dailyNetWax)) ? 'text-green-300' : 'text-yellow-300';
+                    const roiClass = (roiDays <= 180) ? 'bg-green-900/40 text-green-300' : 'bg-yellow-900/40 text-yellow-300';
+                    const marketLink = `https://wax.atomichub.io/explorer/asset/${asset.asset_id}`;
+
+                    dealHtml += `
+                        <tr class="hover:bg-gray-800/60">
+                            <td class="p-3 text-left font-semibold ${buildingTemplate.cssClass}">
+                                ${buildingTemplate.name}
+                            </td>
+                            <td class="p-3 text-right ${priceClass} font-bold">${formatWAX(waxPrice, 2)}</td>
+                            <td class="p-3 text-right text-green-400">${formatWAX(dailyNetWax, 4)}</td>
+                            <td class="p-3 text-center">
+                                <span class="py-1 px-2 rounded-lg text-xs font-bold ${roiClass}">${roiDays.toFixed(1)} Jours</span>
+                            </td>
+                            <td class="p-3 text-center">
+                                <a href="${marketLink}" target="_blank" class="text-blue-400 hover:text-blue-300 transition-colors text-xs font-medium">Voir l'offre</a>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+
+            // Affichage des résultats
+            if(marketDealsBody) {
+                if (profitableDeals > 0) {
+                    marketDealsBody.innerHTML = dealHtml;
+                } else {
+                    marketDealsBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Aucune offre trouvée respectant un ROI maximum de ${maxRoiDays} jours.</td></tr>`;
+                }
+            }
+            marketResultsContainer.classList.remove('hidden');
+
+            // Rétablir l'état du bouton
+            if(btnScanMarket) {
+                btnScanMarket.disabled = false;
+                btnScanMarket.textContent = '🔍 Scanner les Offres (ROI)';
+                marketSniperSection.classList.remove('scanning');
             }
         };
 
-        // Fonction factice pour l'appel à l'API Gemini (si l'API Key est vide)
-        async function callGemini(prompt) {
-            console.log("Appel API Gemini simulé avec le prompt:", prompt);
-            if (apiKey === "") {
-                return "Ceci est une description de Lore générée par l'IA : 'Le Pack Alpha est la première ligne de défense de l'Alliance. Contenant des munitions et des réserves médicales, il est essentiel pour toute mission de survie prolongée en territoire ennemi. Ne partez jamais sans lui.'";
-            }
-            // Logique réelle d'appel à l'API (omise pour le debug dans l'environnement actuel)
-            // Utiliser la fonction realCallGemini si l'API key est présente
-            return "Réponse de l'API Gemini (non implémentée pour l'environnement actuel).";
+        // Fonction d'initialisation du widget MoonPay (Section 14)
+        const initializeMoonPayWidget = () => {
+             // Clé API MoonPay de DEMO (Sandbox)
+             const MOONPAY_API_KEY = 'pk_test_Yc1lYlG7E4yV7m5vH2N2J2F7b4Y2c3'; 
+             const MOONPAY_BASE_URL = 'https://buy-staging.moonpay.com/'; // Staging URL
+
+             const widgetContainer = document.getElementById('moonpayWidgetContainer');
+             if (!widgetContainer) return;
+             
+             // Adresse de destination WAX. Ici on utilise une adresse fictive pour la démo.
+             const defaultWalletAddress = walletAddressInput.value.trim() || 'user.wam';
+             
+             // Note: En production, le signature HMAC est OBLIGATOIRE pour la sécurité
+             const moonpayUrl = `${MOONPAY_BASE_URL}?apiKey=${MOONPAY_API_KEY}` +
+                                `&currencyCode=wax` +
+                                `&walletAddress=${defaultWalletAddress}` +
+                                `&theme=dark` +
+                                `&colorCode=%2300C3A0` + // Teal-like color
+                                `&currencyCode=wax` + 
+                                `&paymentMethod=credit_card`; // Forcing credit card first
+                                
+             const iframe = document.createElement('iframe');
+             iframe.src = moonpayUrl;
+             iframe.width = '100%';
+             iframe.height = '100%';
+             iframe.frameBorder = '0';
+             iframe.allow = 'payment';
+             
+             // Vider et injecter
+             widgetContainer.innerHTML = '';
+             widgetContainer.appendChild(iframe);
+             
+             // Afficher la section 14
+             const moonpaySection = document.getElementById('moonpaySection');
+             if (moonpaySection) moonpaySection.classList.remove('hidden');
+        };
+
+        // --- Listeners et Initialisation ---
+        
+        // Listeners pour les inputs manuels de la Section 1
+        const inputsToWatch = [
+            zoneSelector, packDesignZoneSelector, priceWaxUsdInput, 
+            numberOfAccountsInput, divisionsPerAccountInput, numberOfPacksInput, 
+            divisionsPerPackInput, pricePerPackWaxInput, dovxPriceManualInput, 
+            packDesignPriceUsdInput, packBuildingSelect, packBuildingQtyInput,
+            packToolMultiplierInput, packBuildingPriceInput,
+            lpDovxWaxAmountInput, lpTuWaxAmountInput, lpDovxTuAmountInput // LP Inputs
+        ];
+
+        inputsToWatch.forEach(input => {
+            input.addEventListener('input', calculate);
+        });
+        
+        // Listener pour la réglette DOVX (pour que l'input et la réglette restent synchronisés)
+        if (dovxPriceSlider) {
+             dovxPriceSlider.addEventListener('input', (e) => {
+                 const sliderValue = parseFloat(e.target.value);
+                 if (dovxPriceManualInput) {
+                     dovxPriceManualInput.value = sliderValue.toLocaleString('fr-FR', { minimumFractionDigits: 8, maximumFractionDigits: 8 });
+                 }
+                 calculate(); // Déclenche le recalcul
+             });
+        }
+        
+        // Listener pour le bouton Live Price
+        if (btnFetchPrice) {
+            btnFetchPrice.addEventListener('click', fetchLiveWaxPrice);
+        }
+        
+        // Listener pour le bouton IA Lore
+        if (btnAiLore) {
+            btnAiLore.addEventListener('click', handleAiLoreGeneration);
         }
 
-        // --- Intégration MoonPay ---
-        const initializeMoonPayWidget = () => {
-            const moonpayContainer = document.getElementById('moonpayWidgetContainer');
-            if (!moonpayContainer) return;
-            
-            // REMPLACER CES VALEURS POUR LA PRODUCTION
-            const MOONPAY_API_KEY = "pk_test_123456789"; // Sandbox Test API Key
-            const MOONPAY_PARTNER_NAME = "MyTestPartnerName"; // Remplacer par votre nom de partenaire
-            
-            // Le WAX utilise le ticker 'WAXP' sur MoonPay, mais 'WAX' est parfois suffisant. Nous utilisons WAXP.
-            const defaultCurrency = 'waxp'; 
-            const defaultBaseCurrency = 'usd'; 
-            const defaultAmount = 50;
-            
-            // Construction de l'URL du widget MoonPay
-            // Important: l'URL doit être signée pour la production, mais nous utilisons le mode sandbox ici.
-            // Pour le mode sandbox, l'URL de base est 'https://sandbox.moonpay.com/'
-            // Pour le mode production, l'URL de base est 'https://buy.moonpay.com/'
-            
-            // Pour un widget basique (Sandbox):
-            const moonpayUrl = `https://sandbox.moonpay.com?apiKey=${MOONPAY_API_KEY}&colorCode=%2310b981&theme=dark&defaultCurrencyCode=${defaultCurrency}&baseCurrencyCode=${defaultBaseCurrency}&baseCurrencyAmount=${defaultAmount}&partnerName=${MOONPAY_PARTNER_NAME}`;
+        // Listener pour le bouton Scan Wallet
+        if (btnScanWallet) {
+            btnScanWallet.addEventListener('click', handleWalletScan);
+        }
 
-            const iframe = document.createElement('iframe');
-            iframe.src = moonpayUrl;
-            iframe.width = "100%";
-            iframe.height = "100%";
-            iframe.frameBorder = "0";
-            iframe.allow = "camera; payment";
-            iframe.style.minHeight = "500px";
-
-            moonpayContainer.appendChild(iframe);
-            console.log("MoonPay Widget (Sandbox) initialisé.");
+        // Listener pour le bouton Market Sniper
+        if (btnScanMarket) {
+            btnScanMarket.addEventListener('click', handleMarketScan);
+        }
+        
+        // Listener pour le bouton Arbitrage Scan
+        const handleArbitrageScan = () => {
+            const tokenPrices = { 
+                newPriceDovX: currentPriceDovX, 
+                newPriceCostToken: currentPriceCostToken, 
+                priceWaxUsd: currentPriceWaxUsd 
+            };
+            calculateSwapAnalysis(tokenPrices);
         };
+        if (btnArbitrageScan) {
+            btnArbitrageScan.addEventListener('click', handleArbitrageScan);
+        }
 
-
-        // --- Lancement de l'Application ---
+        // Initialisation du DOM au chargement
         window.onload = function() {
-            // L'application est maintenant entièrement déverrouillée par défaut.
+            console.log("Démarrage de l'initialisation du simulateur...");
             
+            // 1. Initialisation des données statiques du DOM
             initializeSelectors();
             initializeBuildingTable();
-            attachEventListeners();
             
-            // Initialisation des prix des tokens au chargement
+            // 2. Configuration initiale des prix
             const initialDovxValue = REFERENCE_DOVX;
             currentPriceDovX = initialDovxValue; 
             currentPriceCostToken = REFERENCE_TU; 
@@ -2688,13 +2962,11 @@
             // Tente de récupérer le prix WAX/USD, sinon utilise le défaut
             fetchLiveWaxPrice(); 
             
-            // Appeler calculate() au chargement pour afficher les valeurs par défaut
-            // NOTE: calculate est déjà appelé dans fetchLiveWaxPrice, mais on le garde ici si fetch échoue rapidement.
-            // On le supprime pour éviter la double exécution et utiliser le `currentPriceWaxUsd` du fetch.
-            // calculate();
+            // Lancer la récupération des paires Alcor au démarrage (Section 13.3)
+            fetchAllAlcorPairs(); 
 
             // Initialiser l'analyse de swap au chargement également (similaire aux autres sections)
-            handleArbitrageScan();
+            // handleArbitrageScan(); // L'arbitrage est coûteux en appels API. Mieux vaut le laisser se faire via le bouton après le calcul initial.
             
             // Initialisation du widget MoonPay
             initializeMoonPayWidget();
